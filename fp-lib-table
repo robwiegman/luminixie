@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name apa-106)(type KiCad)(uri ${KIPRJMOD}/apa-106.pretty)(options "")(descr ""))
+  (lib (name nixies-us)(type Legacy)(uri ${KIPRJMOD}/nixies-us.mod)(options "")(descr ""))
+)

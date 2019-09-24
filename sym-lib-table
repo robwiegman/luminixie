@@ -1,3 +1,9 @@
 (sym_lib_table
   (lib (name high-voltage-power-supply)(type Legacy)(uri ${KIPRJMOD}/high-voltage-power-supply.lib)(options "")(descr ""))
+  (lib (name apa-106)(type Legacy)(uri ${KIPRJMOD}/apa-106.lib)(options "")(descr ""))
+  (lib (name ESP32)(type Legacy)(uri ${KIPRJMOD}/ESP32.lib)(options "")(descr ""))
+  (lib (name HV5530)(type Legacy)(uri ${KIPRJMOD}/HV5530.lib)(options "")(descr ""))
+  (lib (name mynixies)(type Legacy)(uri ${KIPRJMOD}/mynixies.lib)(options "")(descr ""))
+  (lib (name nixiemisc)(type Legacy)(uri ${KIPRJMOD}/nixiemisc.lib)(options "")(descr ""))
+  (lib (name nixies-us)(type Legacy)(uri ${KIPRJMOD}/nixies-us.lib)(options "")(descr ""))
 )
