@@ -72,7 +72,7 @@ U 1 1 5D24B757
 P 3200 1600
 F 0 "U2" H 3200 1975 50  0000 C CNN
 F 1 "HV-POWER" H 3200 1884 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical" H 3300 1300 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 3300 1300 50  0001 C CNN
 F 3 "" H 3300 1300 50  0001 C CNN
 	1    3200 1600
 	1    0    0    -1  
@@ -221,7 +221,7 @@ NoConn ~ 4350 4650
 Wire Wire Line
 	6750 5250 6750 3950
 Wire Wire Line
-	7800 5250 6750 5250
+	7800 5250 7650 5250
 Connection ~ 9650 4250
 Wire Wire Line
 	6850 4650 7750 4650
@@ -301,7 +301,7 @@ $Comp
 L nixies-us:IN-14 N5
 U 1 1 5D625495
 P 8050 9950
-F 0 "N5" H 8100 10695 45  0000 C CNN
+F 0 "N5" H 7850 10600 45  0000 C CNN
 F 1 "IN-14" H 8050 9950 45  0001 L BNN
 F 2 "nixies-us:nixies-us-IN-14" H 8080 10100 20  0001 C CNN
 F 3 "" H 8050 9950 50  0001 C CNN
@@ -334,7 +334,7 @@ $Comp
 L nixies-us:IN-14 N3
 U 1 1 5D62345B
 P 8050 6250
-F 0 "N3" H 8100 6995 45  0000 C CNN
+F 0 "N3" H 7800 6850 45  0000 C CNN
 F 1 "IN-14" H 8050 6250 45  0001 L BNN
 F 2 "nixies-us:nixies-us-IN-14" H 8080 6400 20  0001 C CNN
 F 3 "" H 8050 6250 50  0001 C CNN
@@ -403,17 +403,6 @@ F 2 "nixies-us:nixies-us-IN-3" H 8330 5500 20  0001 C CNN
 F 3 "" H 8300 5350 50  0001 C CNN
 	1    8300 5350
 	-1   0    0    1   
-$EndComp
-$Comp
-L Device:R R7
-U 1 1 5D64372C
-P 8800 5250
-F 0 "R7" V 8593 5250 50  0000 C CNN
-F 1 "150K" V 8684 5250 50  0000 C CNN
-F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" V 8730 5250 50  0001 C CNN
-F 3 "~" H 8800 5250 50  0001 C CNN
-	1    8800 5250
-	0    1    1    0   
 $EndComp
 Wire Wire Line
 	8400 5250 8650 5250
@@ -558,7 +547,7 @@ L Device:R R9
 U 1 1 5D8D4A08
 P 8800 8950
 F 0 "R9" V 8593 8950 50  0000 C CNN
-F 1 "150K" V 8684 8950 50  0000 C CNN
+F 1 "?" V 8684 8950 50  0000 C CNN
 F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" V 8730 8950 50  0001 C CNN
 F 3 "~" H 8800 8950 50  0001 C CNN
 	1    8800 8950
@@ -636,7 +625,7 @@ Wire Wire Line
 Wire Wire Line
 	3700 1450 9650 1450
 Wire Wire Line
-	7550 8950 7800 8950
+	7550 8950 7700 8950
 NoConn ~ 5450 11700
 NoConn ~ 5450 11550
 Wire Wire Line
@@ -1125,4 +1114,61 @@ Wire Wire Line
 Wire Wire Line
 	10550 7050 10550 7400
 NoConn ~ 9950 7600
+Wire Wire Line
+	8650 5250 8650 5400
+Connection ~ 8650 5250
+Wire Wire Line
+	8950 5400 8950 5500
+Wire Wire Line
+	8950 5500 7650 5500
+Wire Wire Line
+	7650 5500 7650 5250
+Connection ~ 7650 5250
+Wire Wire Line
+	7650 5250 6750 5250
+$Comp
+L Device:R R7
+U 1 1 5D64372C
+P 8800 5250
+F 0 "R7" V 8593 5250 50  0000 C CNN
+F 1 "?" V 8684 5250 50  0000 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" V 8730 5250 50  0001 C CNN
+F 3 "~" H 8800 5250 50  0001 C CNN
+	1    8800 5250
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R R?
+U 1 1 5D91AA0C
+P 8800 5400
+F 0 "R?" V 8900 5400 50  0000 C CNN
+F 1 "?" V 9000 5400 50  0000 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" V 8730 5400 50  0001 C CNN
+F 3 "~" H 8800 5400 50  0001 C CNN
+	1    8800 5400
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R R?
+U 1 1 5D935C0E
+P 8800 9100
+F 0 "R?" V 8900 9100 50  0000 C CNN
+F 1 "?" V 9000 9100 50  0000 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" V 8730 9100 50  0001 C CNN
+F 3 "~" H 8800 9100 50  0001 C CNN
+	1    8800 9100
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	8650 9100 8650 8950
+Connection ~ 8650 8950
+Wire Wire Line
+	8950 9100 8950 9200
+Wire Wire Line
+	8950 9200 7700 9200
+Wire Wire Line
+	7700 9200 7700 8950
+Connection ~ 7700 8950
+Wire Wire Line
+	7700 8950 7800 8950
 $EndSCHEMATC

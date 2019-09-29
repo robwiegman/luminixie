@@ -21,8 +21,8 @@
       )
     )
     (boundary
-      (path pcb 0  242415 -107622  77419.8 -107622  77419.8 -59102.5  242415 -59102.5
-            242415 -107622)
+      (path pcb 0  242570 -109220  80010 -109220  80010 -58420  242570 -58420
+            242570 -109220)
     )
     (via "Via[0-1]_800:400_um")
     (rule
@@ -33,12 +33,31 @@
     )
   )
   (placement
+    (component MountingHole:MountingHole_3mm
+      (place REF6 238760 -105410 front 0 (PN MountingHole_3mm))
+      (place REF5 238760 -62230 front 0 (PN MountingHole_3mm))
+      (place REF4 161290 -105410 front 0 (PN MountingHole_3mm))
+      (place REF3 161290 -62230 front 0 (PN MountingHole_3mm))
+      (place REF2 83820 -105410 front 0 (PN MountingHole_3mm))
+      (place REF1 83820 -62230 front 0 (PN MountingHole_3mm))
+    )
+    (component Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal
+      (place R2 191770 -62230 front 0 (PN ?))
+      (place R1 133350 -62230 front 0 (PN ?))
+      (place R3 203835 -62230 front 0 (PN 20K))
+      (place R4 222885 -62230 front 0 (PN 20K))
+      (place R6 106680 -62230 front 0 (PN 20K))
+      (place R7 122555 -62230 front 0 (PN ?))
+      (place R8 168910 -62230 front 0 (PN 20K))
+    )
     (component Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical
       (place U1 105410 -104140 front 180 (PN "ESP32-MINIKIT"))
     )
     (component Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical
-      (place U2 92710 -99060 front 0 (PN "HV-POWER"))
-      (place J1 85090 -99060 front 0 (PN Conn_01x03_Female))
+      (place U2 94615 -91440 front 0 (PN "HV-POWER"))
+    )
+    (component Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical::1
+      (place J1 85090 -91440 front 0 (PN Conn_01x03_Female))
     )
     (component "apa-106:APA-106-F8"
       (place D6 231140 -73660 front 0 (PN "APA-106-F5"))
@@ -64,17 +83,10 @@
     (component "nixies-us:nixies-us-IN-3::1"
       (place N8 190240 -73660 back 180 (PN "IN-3"))
     )
-    (component Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal
-      (place R3 199390 -62230 front 0 (PN 20K))
-      (place R5 99060 -62230 front 180 (PN 20K))
-      (place R7 123190 -62230 front 0 (PN 150K))
-      (place R8 165100 -62230 front 0 (PN 20K))
-    )
     (component Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal::1
-      (place R4 222250 -62230 front 0 (PN 20K))
-      (place R6 106680 -62230 front 0 (PN 20K))
-      (place R9 180340 -62230 front 0 (PN 150K))
-      (place R10 140970 -62230 front 0 (PN 20K))
+      (place R5 99060 -62230 front 180 (PN 20K))
+      (place R9 180975 -62230 front 0 (PN ?))
+      (place R10 146050 -62230 front 0 (PN 20K))
     )
     (component "Package_LCC:PLCC-44_THT-Socket"
       (place U3 133350 -87630 front 0 (PN HV5530_PLCC))
@@ -84,6 +96,44 @@
     )
   )
   (library
+    (image MountingHole:MountingHole_3mm
+      (outline (path signal 50  3250 0  3168.52 -723.193  2928.15 -1410.12  2540.95 -2026.34
+            2026.34 -2540.95  1410.12 -2928.15  723.193 -3168.52  0 -3250
+            -723.193 -3168.52  -1410.12 -2928.15  -2026.34 -2540.95  -2540.95 -2026.34
+            -2928.15 -1410.12  -3168.52 -723.193  -3250 0  -3168.52 723.193
+            -2928.15 1410.12  -2540.95 2026.34  -2026.34 2540.95  -1410.12 2928.15
+            -723.193 3168.52  0 3250  723.193 3168.52  1410.12 2928.15  2026.34 2540.95
+            2540.95 2026.34  2928.15 1410.12  3168.52 723.193  3250 0))
+      (outline (path signal 150  3000 0  2919.14 -691.848  2680.9 -1346.4  2298.13 -1928.36
+            1791.48 -2406.37  1188.24 -2754.65  520.945 -2954.42  -174.434 -2994.92
+            -860.41 -2873.97  -1500 -2598.08  -2058.72 -2182.12  -2506.46 -1648.53
+            -2819.08 -1026.06  -2979.72 -348.279  -2979.72 348.279  -2819.08 1026.06
+            -2506.46 1648.53  -2058.72 2182.12  -1500 2598.08  -860.41 2873.97
+            -174.434 2994.92  520.945 2954.42  1188.24 2754.65  1791.48 2406.37
+            2298.13 1928.36  2680.9 1346.4  2919.14 691.848  3000 0))
+      (keepout "" (circle F.Cu 3000))
+      (keepout "" (circle B.Cu 3000))
+    )
+    (image Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal
+      (outline (path signal 100  660 1250  660 -1250))
+      (outline (path signal 100  660 -1250  6960 -1250))
+      (outline (path signal 100  6960 -1250  6960 1250))
+      (outline (path signal 100  6960 1250  660 1250))
+      (outline (path signal 100  0 0  660 0))
+      (outline (path signal 100  7620 0  6960 0))
+      (outline (path signal 120  540 1040  540 1370))
+      (outline (path signal 120  540 1370  7080 1370))
+      (outline (path signal 120  7080 1370  7080 1040))
+      (outline (path signal 120  540 -1040  540 -1370))
+      (outline (path signal 120  540 -1370  7080 -1370))
+      (outline (path signal 120  7080 -1370  7080 -1040))
+      (outline (path signal 50  -1050 1500  -1050 -1500))
+      (outline (path signal 50  -1050 -1500  8670 -1500))
+      (outline (path signal 50  8670 -1500  8670 1500))
+      (outline (path signal 50  8670 1500  -1050 1500))
+      (pin Round[A]Pad_1600_um 1 0 0)
+      (pin Oval[A]Pad_1600x1600_um 2 7620 0)
+    )
     (image Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical
       (outline (path signal 50  1800 1800  -1800 1800))
       (outline (path signal 50  1800 -14500  1800 1800))
@@ -108,6 +158,26 @@
       (pin Rect[A]Pad_1700x1700_um 1 0 0)
     )
     (image Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical
+      (outline (path signal 100  -635 1270  1270 1270))
+      (outline (path signal 100  1270 1270  1270 -6350))
+      (outline (path signal 100  1270 -6350  -1270 -6350))
+      (outline (path signal 100  -1270 -6350  -1270 635))
+      (outline (path signal 100  -1270 635  -635 1270))
+      (outline (path signal 120  -1330 -6410  1330 -6410))
+      (outline (path signal 120  -1330 -1270  -1330 -6410))
+      (outline (path signal 120  1330 -1270  1330 -6410))
+      (outline (path signal 120  -1330 -1270  1330 -1270))
+      (outline (path signal 120  -1330 0  -1330 1330))
+      (outline (path signal 120  -1330 1330  0 1330))
+      (outline (path signal 50  -1800 1800  -1800 -6850))
+      (outline (path signal 50  -1800 -6850  1800 -6850))
+      (outline (path signal 50  1800 -6850  1800 1800))
+      (outline (path signal 50  1800 1800  -1800 1800))
+      (pin Rect[A]Pad_1700x1700_um 1 0 0)
+      (pin Oval[A]Pad_1700x1700_um 2 0 -2540)
+      (pin Oval[A]Pad_1700x1700_um 3 0 -5080)
+    )
+    (image Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical::1
       (outline (path signal 50  1800 1800  -1800 1800))
       (outline (path signal 50  1800 -6850  1800 1800))
       (outline (path signal 50  -1800 -6850  1800 -6850))
@@ -219,45 +289,25 @@
       (pin Round[A]Pad_1107.44_um A -1587.5 0)
       (pin Round[A]Pad_1107.44_um K 1587.5 0)
     )
-    (image Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal
-      (outline (path signal 50  8670 1500  -1050 1500))
-      (outline (path signal 50  8670 -1500  8670 1500))
-      (outline (path signal 50  -1050 -1500  8670 -1500))
-      (outline (path signal 50  -1050 1500  -1050 -1500))
-      (outline (path signal 120  7080 -1370  7080 -1040))
-      (outline (path signal 120  540 -1370  7080 -1370))
-      (outline (path signal 120  540 -1040  540 -1370))
-      (outline (path signal 120  7080 1370  7080 1040))
-      (outline (path signal 120  540 1370  7080 1370))
-      (outline (path signal 120  540 1040  540 1370))
-      (outline (path signal 100  7620 0  6960 0))
-      (outline (path signal 100  0 0  660 0))
-      (outline (path signal 100  6960 1250  660 1250))
-      (outline (path signal 100  6960 -1250  6960 1250))
-      (outline (path signal 100  660 -1250  6960 -1250))
-      (outline (path signal 100  660 1250  660 -1250))
-      (pin Oval[A]Pad_1600x1600_um 2 7620 0)
-      (pin Round[A]Pad_1600_um 1 0 0)
-    )
     (image Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal::1
-      (outline (path signal 100  660 1250  660 -1250))
-      (outline (path signal 100  660 -1250  6960 -1250))
-      (outline (path signal 100  6960 -1250  6960 1250))
-      (outline (path signal 100  6960 1250  660 1250))
-      (outline (path signal 100  0 0  660 0))
-      (outline (path signal 100  7620 0  6960 0))
-      (outline (path signal 120  540 1040  540 1370))
-      (outline (path signal 120  540 1370  7080 1370))
-      (outline (path signal 120  7080 1370  7080 1040))
-      (outline (path signal 120  540 -1040  540 -1370))
-      (outline (path signal 120  540 -1370  7080 -1370))
-      (outline (path signal 120  7080 -1370  7080 -1040))
-      (outline (path signal 50  -1050 1500  -1050 -1500))
-      (outline (path signal 50  -1050 -1500  8670 -1500))
-      (outline (path signal 50  8670 -1500  8670 1500))
       (outline (path signal 50  8670 1500  -1050 1500))
-      (pin Round[A]Pad_1600_um 1 0 0)
+      (outline (path signal 50  8670 -1500  8670 1500))
+      (outline (path signal 50  -1050 -1500  8670 -1500))
+      (outline (path signal 50  -1050 1500  -1050 -1500))
+      (outline (path signal 120  7080 -1370  7080 -1040))
+      (outline (path signal 120  540 -1370  7080 -1370))
+      (outline (path signal 120  540 -1040  540 -1370))
+      (outline (path signal 120  7080 1370  7080 1040))
+      (outline (path signal 120  540 1370  7080 1370))
+      (outline (path signal 120  540 1040  540 1370))
+      (outline (path signal 100  7620 0  6960 0))
+      (outline (path signal 100  0 0  660 0))
+      (outline (path signal 100  6960 1250  660 1250))
+      (outline (path signal 100  6960 -1250  6960 1250))
+      (outline (path signal 100  660 -1250  6960 -1250))
+      (outline (path signal 100  660 1250  660 -1250))
       (pin Oval[A]Pad_1600x1600_um 2 7620 0)
+      (pin Round[A]Pad_1600_um 1 0 0)
     )
     (image "Package_LCC:PLCC-44_THT-Socket"
       (outline (path signal 100  -12020 5400  -13020 4400))
@@ -685,16 +735,16 @@
       (pins N6-RHDP)
     )
     (net "Net-(N7-PadK)"
-      (pins N7-K U3-6)
+      (pins R1-1 N7-K U3-6)
     )
     (net "Net-(N7-PadA)"
-      (pins N7-A R7-2)
+      (pins R1-2 N7-A R7-2)
     )
     (net "Net-(N8-PadA)"
-      (pins N8-A R9-2)
+      (pins R2-2 N8-A R9-2)
     )
     (net "Net-(N8-PadK)"
-      (pins N8-K U4-40)
+      (pins R2-1 N8-K U4-40)
     )
     (net +5V
       (pins U1-16 U2-1 J1-3 D6-2 D5-2 D4-2 D3-2 D2-2 D1-2 U3-25 U3-22 U4-22 U4-25)
@@ -774,7 +824,7 @@
     (net "Net-(D6-Pad4)"
       (pins D6-4)
     )
-    (class kicad_default "" +5V BL CLK DIN GND HV_GND LE "Net-(D1-Pad4)" "Net-(D2-Pad4)"
+    (class kicad_default "" +5V BL CLK DIN GND LE "Net-(D1-Pad4)" "Net-(D2-Pad4)"
       "Net-(D3-Pad4)" "Net-(D4-Pad4)" "Net-(D5-Pad4)" "Net-(D6-Pad4)" "Net-(N1-Pad0)"
       "Net-(N1-Pad1)" "Net-(N1-Pad2)" "Net-(N1-Pad3)" "Net-(N1-Pad4)" "Net-(N1-Pad5)"
       "Net-(N1-Pad6)" "Net-(N1-Pad7)" "Net-(N1-Pad8)" "Net-(N1-Pad9)" "Net-(N1-PadA)"
@@ -793,11 +843,10 @@
       "Net-(N6-Pad2)" "Net-(N6-Pad3)" "Net-(N6-Pad4)" "Net-(N6-Pad5)" "Net-(N6-Pad6)"
       "Net-(N6-Pad7)" "Net-(N6-Pad8)" "Net-(N6-Pad9)" "Net-(N6-PadA)" "Net-(N6-PadLHDP)"
       "Net-(N6-PadRHDP)" "Net-(N7-PadA)" "Net-(N7-PadK)" "Net-(N8-PadA)" "Net-(N8-PadK)"
-      "Net-(R1-Pad1)" "Net-(R10-Pad1)" "Net-(R2-Pad1)" "Net-(U1-Pad2)" "Net-(U1-Pad3)"
-      "Net-(U1-Pad4)" "Net-(U1-Pad5)" "Net-(U2-Pad5)" "Net-(U3-Pad17)" "Net-(U3-Pad18)"
-      "Net-(U3-Pad19)" "Net-(U3-Pad20)" "Net-(U3-Pad21)" "Net-(U3-Pad29)"
-      "Net-(U4-Pad17)" "Net-(U4-Pad18)" "Net-(U4-Pad19)" "Net-(U4-Pad20)"
-      "Net-(U4-Pad21)" "Net-(U4-Pad29)"
+      "Net-(R10-Pad1)" "Net-(U1-Pad5)" "Net-(U3-Pad17)" "Net-(U3-Pad18)" "Net-(U3-Pad19)"
+      "Net-(U3-Pad20)" "Net-(U3-Pad21)" "Net-(U3-Pad29)" "Net-(U4-Pad17)"
+      "Net-(U4-Pad18)" "Net-(U4-Pad19)" "Net-(U4-Pad20)" "Net-(U4-Pad21)"
+      "Net-(U4-Pad29)"
       (circuit
         (use_via Via[0-1]_800:400_um)
       )
