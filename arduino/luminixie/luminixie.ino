@@ -5,12 +5,20 @@
 #include <ezTime.h>               // See https://github.com/ropg/ezTime
 #include <FS.h>                   // See https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html
 #include <ArduinoJson.h>          // See https://arduinojson.org/
+#include "DHT.h"                  // See https://github.com/adafruit/DHT-sensor-library
 
 // -------------- LED's ---------------
 #define NR_LEDS       (6)
 #define PIN_LED_DATA  (12)
 CRGB leds[NR_LEDS];
 byte previousLedBrightness;
+
+// -------------- Thermometer / Hygrometer ---------------
+#define DHTTYPE DHT22
+#define DHTPIN  14        // Digital pin we're connected to, on Wemos D1 it's pin D5
+DHT dht(DHTPIN, DHTTYPE); // Initialize DHT sensor.
+float temperature;
+float humidity;
 
 // -------------- HV5530 ---------------
 #define PIN_HV5530_CLOCK     (4)
@@ -47,7 +55,10 @@ struct Config {
   String wifiPassword;
 
   String timezoneLocation; // See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones (TZ database name)
-  boolean showDate; // When set to true, the current date is shown every minute on the nixies on seconds 30, 31 and 32
+  boolean showDate; // When set to true, the current date is shown every minute on the nixies on seconds 10, 11 and 12
+
+  boolean showTemperature; // When set to true, the current temperature is shown every minute on the nixies on seconds 30, 31 and 32
+  boolean showHumidity; // When set to true, the current humidity is shown every minute on the nixies on seconds 50, 51 and 52
 
   byte ledBrightness; // Range 0-255
   byte ledColorR;
@@ -84,7 +95,8 @@ void setup() {
   setupFileSystem();
   loadConfigurationFromFile();
   setupLeds();
-  setupNixies(); 
+  setupNixies();
+  setupTemperatureAndHumiditySensor();
   setupNetwork();
   setupDateTimeSync();
 }
@@ -115,6 +127,10 @@ void setupNixies() {
   allTubesOff();
   digitalWrite(PIN_HV5530_BLANKING, HIGH);
   writerHV5530();  
+}
+
+void setupTemperatureAndHumiditySensor() {
+  dht.begin();
 }
 
 void setupNetwork() {
@@ -162,49 +178,101 @@ void loop() {
     if (dateAndTime.second() == 0 && dateAndTime.minute() % 5 == 0) {
       runAntiCathodePoisoningSequence(1);
     }
+
+    if (config.showTemperature) {
+      temperature = dht.readTemperature(); // Read temperature as Celsius (the default)
+      if (isnan(temperature)) {
+        Serial.println("Failed to read temperature from DHT sensor!");
+      }
+    }
+    if (config.showHumidity) {
+      humidity = dht.readHumidity();
+      if (isnan(humidity)) {
+        Serial.println("Failed to read humidity from DHT sensor!");
+      }
+    }
+    printDhtValues();
     
-    if (config.showDate && (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
-      setTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);  
+    if (config.showDate && (dateAndTime.second() == 10 || dateAndTime.second() == 11 || dateAndTime.second() == 12)) {
+      setTimeOrDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
+    } else if (config.showTemperature && !isnan(temperature)&& (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
+      setAmbientSensorReadingOnTubes(temperature);
+    } else if (config.showHumidity && !isnan(humidity) && (dateAndTime.second() == 50 || dateAndTime.second() == 51 || dateAndTime.second() == 52)) {
+      setAmbientSensorReadingOnTubes(humidity);
     } else {
-      setTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());  
+      setTimeOrDateOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
     }
   }
-
+  
   dnsServer.processNextRequest();
   webserver.handleClient();
+}
+
+void printDhtValues() {
+  Serial.print("Humidity: ");
+  Serial.print(humidity);
+  Serial.print(" %");
+  Serial.print("\t");
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" *C ");
 }
 
 void printCurrentTimeAndDate() {
   Serial.println(dateAndTime.dateTime("d-m-y H:i:s.v T (e)"));  
 }
 
-void setTubes(byte left, byte center, byte right) {
+// Assumes that parameter "value" is less than 100.00
+void setAmbientSensorReadingOnTubes(float value) {
   allTubesOff();
-  setLeftTubes(left);
-  setCenterTubes(center);
-  setRightTubes(right);
+
+  int integerPartOfValue = (int)(value);
+  setTube(2, extractDigit(integerPartOfValue, 1));
+  if (integerPartOfValue >= 10) {
+    setTube(3, extractDigit(integerPartOfValue, 2));  
+  }
+
+  int decimals = getDecimals(value, 2);
+  setTube(0, extractDigit(decimals, 1));
+  setTube(1, decimals < 10 ? 0 : extractDigit(decimals, 2));
+
   writerHV5530();
 }
 
-void setLeftTubes(byte left) {
+int getDecimals(float value, int numberOfDecimals) {
+  String valueString = String(value, numberOfDecimals);
+  String decimalsString = valueString.substring(valueString.lastIndexOf(".") + 1);      
+  return decimalsString.toInt();
+}
+
+// Each "item" will be displayed with leading zero's.
+// This method assumes the given parameter values are less than 100.
+void setTimeOrDateOnTubes(byte left, byte center, byte right) {
+  allTubesOff();
+  
   setTube(4, extractDigit(left, 1));
-  setTube(5, left < 10 ? 0 : extractDigit(left, 2)); 
-}
-
-void setCenterTubes(byte center) {
+  setTube(5, left < 10 ? 0 : extractDigit(left, 2));
   setTube(2, extractDigit(center, 1));
-  setTube(3, center < 10 ? 0 : extractDigit(center, 2)); 
-}
-
-void setRightTubes(byte right) {
+  setTube(3, center < 10 ? 0 : extractDigit(center, 2));
   setTube(0, extractDigit(right, 1));
-  setTube(1, right < 10 ? 0 : extractDigit(right, 2)); 
+  setTube(1, right < 10 ? 0 : extractDigit(right, 2));
+  
+  writerHV5530();
 }
 
+// Returns a single digit in a given number.
+// Examples:
+// extractDigit(8135, 1) -> returns 5
+// extractDigit(8135, 2) -> returns 3
+// extractDigit(8135, 3) -> returns 1
+// extractDigit(8135, 4) -> returns 8
 int extractDigit(int number, int pos) {
   return int(number/(pow(10,pos-1))) - int(number/(pow(10,pos)))*10;
 }
 
+// Set the given tube to the given digit.
+// The parameter "tube" van have the folowing values: 0, 1, 2, 3, 4, 5.
+// Where 0 is the most right tube and 5 is the most left tube (as seen from the front).
 void setTube(byte tube, byte digit) {
   byte pin = pinIndex[tube][digit];
   bcmPins[pin].value = DIGIT_ON;
@@ -359,7 +427,7 @@ void setupAccessPoint() {
   WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(accesspointIp, accesspointIp, IPAddress(255, 255, 255, 0));
 
-  // Please note that when the password is too short (less than 8 characters) the WiFi.softAP(ssid, password) function doesn't work. 
+  // Please note that when the password is too short (less than 8 characters) the WiFi.softAP(ssid, password) function doesn't work.
   // There is no warning during compilation for this.
   const char* accesspointPassword = "luminixie";
 
@@ -422,6 +490,8 @@ void loadConfigurationFromFile() {
   config.ledColorB = jsonDoc["ledColorB"] | 255;
   config.timezoneLocation = jsonDoc["timezoneLocation"] | "Europe/Amsterdam";
   config.showDate = jsonDoc["showDate"] | true;
+  config.showTemperature = jsonDoc["showTemperature"] | true;
+  config.showHumidity = jsonDoc["showHumidity"] | true;
 
   Serial.println("Current configuration: ");
   serializeJsonPretty(jsonDoc, Serial);
@@ -439,6 +509,8 @@ DynamicJsonDocument getConfigObjectAsJsonDocument() {
   jsonDoc["ledColorB"] = config.ledColorB;
   jsonDoc["timezoneLocation"] = config.timezoneLocation;
   jsonDoc["showDate"] = config.showDate;
+  jsonDoc["showTemperature"] = config.showTemperature;
+  jsonDoc["showHumidity"] = config.showHumidity;
 
   return jsonDoc;
 }
