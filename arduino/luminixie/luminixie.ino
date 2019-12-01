@@ -42,36 +42,35 @@ Timezone dateAndTime = nullptr;
 
 // -------------- Config ---------------
 struct Config {
-  byte ledBrightness; // Range 0-255
-
   byte connectionMode; // 0 (CONNECTION_MODE_AP), 1 (CONNECTION_MODE_STA)
   String wifiSsid;
   String wifiPassword;
 
-  String timezoneLocation;
-  
-  String ledColorHex;
+  String timezoneLocation; // See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones (TZ database name)
+  boolean showDate; // When set to true, the current date is shown every minute on the nixies on seconds 30, 31 and 32
+
+  byte ledBrightness; // Range 0-255
   byte ledColorR;
   byte ledColorG;
-  byte ledColorB;  
+  byte ledColorB;
 };
 
 const char* configFileFullPath = "/config.json";
 Config config; // <- global configuration values
 
-// -------------- HV5530 / Nixies ---------------
-byte pinIndex[6][10] = {
-  // Tube 1 (0 - 9) (most right tube)
+// -------------- HV5530 / Nixie tubes ---------------
+byte pinIndex[6][10] = { // Mapping table to find the HV5530 pinnumber for a digit on a tube
+  // Tube 0 (0 - 9) (most right tube)
   { 0, 9, 8, 7, 6, 5, 4, 3, 2, 1 },
-  // Tube 2 (0 - 9)
+  // Tube 1 (0 - 9)
   { 10, 19, 18, 17, 16, 15, 14, 13, 12, 11 },
-  // Tube 3 (0 - 9)
+  // Tube 2 (0 - 9)
   { 21, 30, 29, 28, 27, 26, 25, 24, 23, 22 },
-  // Tube 4 (0 - 9)
+  // Tube 3 (0 - 9)
   { 32, 41, 40, 39, 38, 37, 36, 35, 34, 33 },
-  // Tube 5 (0 - 9)
+  // Tube 4 (0 - 9)
   { 43, 52, 51, 50, 49, 48, 47, 46, 45, 44 },
-  // Tube 6 (0 - 9) (most left tube)
+  // Tube 5 (0 - 9) (most left tube)
   { 53, 62, 61, 60, 59, 58, 57, 56, 55, 54 }
 };
 
@@ -127,7 +126,6 @@ void setupNetwork() {
     connectToWifi();
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("Failed to connect in STA mode. Switch to AP mode");
-
       config.connectionMode = CONNECTION_MODE_AP;
       saveConfigurationToFile();
       setupAccessPoint();
@@ -159,11 +157,17 @@ void loop() {
   events(); // Process date/time events
 
   if (secondChanged()) {
+    printCurrentTimeAndDate();
+    
     if (dateAndTime.second() == 0 && dateAndTime.minute() % 5 == 0) {
       runAntiCathodePoisoningSequence(1);
     }
-    setTimeOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
-    printCurrentTimeAndDate();
+    
+    if (config.showDate && (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
+      setTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);  
+    } else {
+      setTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());  
+    }
   }
 
   dnsServer.processNextRequest();
@@ -171,40 +175,30 @@ void loop() {
 }
 
 void printCurrentTimeAndDate() {
-  Serial.print(dateAndTime.hour());
-  Serial.print(":");
-  Serial.print(dateAndTime.minute());
-  Serial.print(":");
-  Serial.print(dateAndTime.second());
-  Serial.print(" ");
-  Serial.print(dateAndTime.day());
-  Serial.print("-");
-  Serial.print(dateAndTime.month());
-  Serial.print("-");
-  Serial.println(dateAndTime.year());
+  Serial.println(dateAndTime.dateTime("d-m-y H:i:s.v T (e)"));  
 }
 
-void setTimeOnTubes(byte hours, byte minutes, byte seconds) {
+void setTubes(byte left, byte center, byte right) {
   allTubesOff();
-  setHoursTubes(hours);
-  setMinutesTubes(minutes);
-  setSecondsTubes(seconds);
+  setLeftTubes(left);
+  setCenterTubes(center);
+  setRightTubes(right);
   writerHV5530();
 }
 
-void setSecondsTubes(byte seconds) {
-  setTube(0, extractDigit(seconds, 1));
-  setTube(1, seconds < 10 ? 0 : extractDigit(seconds, 2)); 
+void setLeftTubes(byte left) {
+  setTube(4, extractDigit(left, 1));
+  setTube(5, left < 10 ? 0 : extractDigit(left, 2)); 
 }
 
-void setMinutesTubes(byte seconds) {
-  setTube(2, extractDigit(seconds, 1));
-  setTube(3, seconds < 10 ? 0 : extractDigit(seconds, 2)); 
+void setCenterTubes(byte center) {
+  setTube(2, extractDigit(center, 1));
+  setTube(3, center < 10 ? 0 : extractDigit(center, 2)); 
 }
 
-void setHoursTubes(byte seconds) {
-  setTube(4, extractDigit(seconds, 1));
-  setTube(5, seconds < 10 ? 0 : extractDigit(seconds, 2)); 
+void setRightTubes(byte right) {
+  setTube(0, extractDigit(right, 1));
+  setTube(1, right < 10 ? 0 : extractDigit(right, 2)); 
 }
 
 int extractDigit(int number, int pos) {
@@ -423,14 +417,30 @@ void loadConfigurationFromFile() {
   config.wifiSsid = jsonDoc["wifiSsid"] | "default";
   config.wifiPassword = jsonDoc["wifiPassword"] | "default";
   config.ledBrightness = jsonDoc["ledBrightness"] | 25;
-  config.ledColorHex = jsonDoc["ledColorHex"] | "#0000FF";
   config.ledColorR = jsonDoc["ledColorR"] | 0;
   config.ledColorG = jsonDoc["ledColorG"] | 0;
   config.ledColorB = jsonDoc["ledColorB"] | 255;
   config.timezoneLocation = jsonDoc["timezoneLocation"] | "Europe/Amsterdam";
+  config.showDate = jsonDoc["showDate"] | true;
 
   Serial.println("Current configuration: ");
   serializeJsonPretty(jsonDoc, Serial);
+}
+
+DynamicJsonDocument getConfigObjectAsJsonDocument() {
+  DynamicJsonDocument jsonDoc(1024);
+
+  jsonDoc["connectionMode"] = config.connectionMode;
+  jsonDoc["wifiSsid"] = config.wifiSsid;
+  jsonDoc["wifiPassword"] = config.wifiPassword;
+  jsonDoc["ledBrightness"] = config.ledBrightness;
+  jsonDoc["ledColorR"] = config.ledColorR;
+  jsonDoc["ledColorG"] = config.ledColorG;
+  jsonDoc["ledColorB"] = config.ledColorB;
+  jsonDoc["timezoneLocation"] = config.timezoneLocation;
+  jsonDoc["showDate"] = config.showDate;
+
+  return jsonDoc;
 }
 
 void saveConfigurationToFile() {
@@ -449,26 +459,10 @@ void writeConfigurationJsonToFile(DynamicJsonDocument configurationJson) {
   }
 
   if (serializeJson(configurationJson, configFile) == 0) {
-    Serial.println("Failed to write to file");
+    Serial.println("Failed to write configuration to file");
   }
   configFile.close();
 
   Serial.println("Configuration written to file: ");
   serializeJsonPretty(configurationJson, Serial);
-}
-
-DynamicJsonDocument getConfigObjectAsJsonDocument() {
-  DynamicJsonDocument jsonDoc(1024);
-
-  jsonDoc["connectionMode"] = config.connectionMode;
-  jsonDoc["wifiSsid"] = config.wifiSsid;
-  jsonDoc["wifiPassword"] = config.wifiPassword;
-  jsonDoc["ledBrightness"] = config.ledBrightness;
-  jsonDoc["ledColorR"] = config.ledColorR;
-  jsonDoc["ledColorG"] = config.ledColorG;
-  jsonDoc["ledColorB"] = config.ledColorB;
-  jsonDoc["ledColorHex"] = config.ledColorHex;
-  jsonDoc["timezoneLocation"] = config.timezoneLocation;
-
-  return jsonDoc;
 }
