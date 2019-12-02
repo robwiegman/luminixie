@@ -27,8 +27,8 @@ float humidity;
 #define PIN_HV5530_BLANKING  (2)
 #define NR_HV5530s           (2)
 #define NR_HV5530_PINS       (32 * NR_HV5530s)
-#define DIGIT_ON             (true)
-#define DIGIT_OFF            (false)
+#define NIXIE_ON             (true)
+#define NIXIE_OFF            (false)
 
 // -------------- Accesspoint ---------------
 IPAddress accesspointIp(192, 168, 1, 1);
@@ -85,8 +85,14 @@ byte pinIndex[6][10] = { // Mapping table to find the HV5530 pinnumber for a dig
   { 53, 62, 61, 60, 59, 58, 57, 56, 55, 54 }
 };
 
+byte rightDotPin = 20;
+byte leftDotPin = 42;
+
+boolean turnOffTimeDots;
+unsigned long turnOffTimeDotsAt;
+
 struct bcmPin_t {
-  bool value = DIGIT_OFF;
+  bool value = NIXIE_OFF;
 };
 bcmPin_t bcmPins[NR_HV5530_PINS];
 
@@ -170,6 +176,13 @@ void setupDateTimeSync() {
 }
 
 void loop() {
+  if (turnOffTimeDots && millis() >= turnOffTimeDotsAt) {
+    turnOffTimeDots = false;
+    bcmPins[rightDotPin].value = NIXIE_OFF;
+    bcmPins[leftDotPin].value = NIXIE_OFF;
+    writerHV5530();
+  }
+  
   events(); // Process date/time events
 
   if (secondChanged()) {
@@ -180,7 +193,7 @@ void loop() {
     }
 
     if (config.showTemperature) {
-      temperature = dht.readTemperature(); // Read temperature as Celsius (the default)
+      temperature = dht.readTemperature();
       if (isnan(temperature)) {
         Serial.println("Failed to read temperature from DHT sensor!");
       }
@@ -194,13 +207,13 @@ void loop() {
     printDhtValues();
     
     if (config.showDate && (dateAndTime.second() == 10 || dateAndTime.second() == 11 || dateAndTime.second() == 12)) {
-      setTimeOrDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
+      setDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
     } else if (config.showTemperature && !isnan(temperature)&& (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
-      setAmbientSensorReadingOnTubes(temperature);
+      setTemperatureOnTubes(temperature);
     } else if (config.showHumidity && !isnan(humidity) && (dateAndTime.second() == 50 || dateAndTime.second() == 51 || dateAndTime.second() == 52)) {
-      setAmbientSensorReadingOnTubes(humidity);
+      setHumidityOnTubes(humidity);
     } else {
-      setTimeOrDateOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
+      setTimeOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
     }
   }
   
@@ -222,9 +235,12 @@ void printCurrentTimeAndDate() {
   Serial.println(dateAndTime.dateTime("d-m-y H:i:s.v T (e)"));  
 }
 
-// Assumes that parameter "value" is less than 100.00
-void setAmbientSensorReadingOnTubes(float value) {
+// Assumes that parameter "value" is less than 100.00.
+// Temperature is shown on different tubes than Humidity to have "even" wear on the tubes
+void setTemperatureOnTubes(float value) {
   allTubesOff();
+
+  bcmPins[rightDotPin].value = NIXIE_ON;
 
   int integerPartOfValue = (int)(value);
   setTube(2, extractDigit(integerPartOfValue, 1));
@@ -232,28 +248,73 @@ void setAmbientSensorReadingOnTubes(float value) {
     setTube(3, extractDigit(integerPartOfValue, 2));  
   }
 
-  int decimals = getDecimals(value, 2);
-  setTube(0, extractDigit(decimals, 1));
-  setTube(1, decimals < 10 ? 0 : extractDigit(decimals, 2));
+  int decimals = getDecimals(value, 1);
+  setTube(1, extractDigit(decimals, 1));
+
+  writerHV5530();
+}
+
+// Assumes that parameter "value" is less than 100.00.
+// Temperature is shown on different tubes than Humidity to have "even" wear on the tubes
+void setHumidityOnTubes(float value) {
+  allTubesOff();
+
+  bcmPins[leftDotPin].value = NIXIE_ON;
+
+  int integerPartOfValue = (int)(value);
+  setTube(4, extractDigit(integerPartOfValue, 1));
+  if (integerPartOfValue >= 10) {
+    setTube(5, extractDigit(integerPartOfValue, 2));  
+  }
+
+  int decimals = getDecimals(value, 1);
+  setTube(3, extractDigit(decimals, 1));
 
   writerHV5530();
 }
 
 int getDecimals(float value, int numberOfDecimals) {
   String valueString = String(value, numberOfDecimals);
-  String decimalsString = valueString.substring(valueString.lastIndexOf(".") + 1);      
+  int indexOfDot = valueString.lastIndexOf(".");
+  String decimalsString = valueString.substring(indexOfDot + 1);
   return decimalsString.toInt();
 }
 
 // Each "item" will be displayed with leading zero's.
 // This method assumes the given parameter values are less than 100.
-void setTimeOrDateOnTubes(byte left, byte center, byte right) {
+void setTimeOnTubes(byte left, byte center, byte right) {
   allTubesOff();
   
   setTube(4, extractDigit(left, 1));
   setTube(5, left < 10 ? 0 : extractDigit(left, 2));
+  
+  bcmPins[rightDotPin].value = NIXIE_ON;
+  
   setTube(2, extractDigit(center, 1));
   setTube(3, center < 10 ? 0 : extractDigit(center, 2));
+  
+  bcmPins[leftDotPin].value = NIXIE_ON;
+  
+  setTube(0, extractDigit(right, 1));
+  setTube(1, right < 10 ? 0 : extractDigit(right, 2));
+  
+  writerHV5530();
+
+  turnOffTimeDotsAt = millis() + 500;
+  turnOffTimeDots = true;
+}
+
+// Each "item" will be displayed with leading zero's.
+// This method assumes the given parameter values are less than 100.
+void setDateOnTubes(byte left, byte center, byte right) {
+  allTubesOff();
+  
+  setTube(4, extractDigit(left, 1));
+  setTube(5, left < 10 ? 0 : extractDigit(left, 2));
+  
+  setTube(2, extractDigit(center, 1));
+  setTube(3, center < 10 ? 0 : extractDigit(center, 2));
+  
   setTube(0, extractDigit(right, 1));
   setTube(1, right < 10 ? 0 : extractDigit(right, 2));
   
@@ -275,13 +336,13 @@ int extractDigit(int number, int pos) {
 // Where 0 is the most right tube and 5 is the most left tube (as seen from the front).
 void setTube(byte tube, byte digit) {
   byte pin = pinIndex[tube][digit];
-  bcmPins[pin].value = DIGIT_ON;
+  bcmPins[pin].value = NIXIE_ON;
 }
 
 void allTubesOff() {
   bcmPin_t *p = &bcmPins[0];
   for (uint8_t i = 0; i < NR_HV5530_PINS; i++) {
-    p++->value = DIGIT_OFF;   // all pins off.
+    p++->value = NIXIE_OFF;   // all pins off.
   }
 }
 
@@ -308,7 +369,7 @@ void writerHV5530(void) {
   digitalWrite(PIN_HV5530_LATCH, LOW);  // load data
   for (uint8_t i = 0; i < NR_HV5530_PINS; i++) {
     delayMicroseconds(1);
-    digitalWrite(PIN_HV5530_DATA, (p->value == DIGIT_ON) ? HIGH : LOW);
+    digitalWrite(PIN_HV5530_DATA, (p->value == NIXIE_ON) ? HIGH : LOW);
     digitalWrite(PIN_HV5530_CLOCK, HIGH);
     // try go for a lower delay or remove it all together
     delayMicroseconds(10);
