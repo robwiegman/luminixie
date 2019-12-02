@@ -166,6 +166,7 @@ void setupDateTimeSync() {
 
   if (config.connectionMode == CONNECTION_MODE_AP) {
     Serial.println("Setting fixed time and date");
+    setInterval(); // Instruct eztime to do not query NTP
     setTime(0, 0, 0, 1, 1, 2000);
     
   } else if (connectedToWifiNetwork) {
