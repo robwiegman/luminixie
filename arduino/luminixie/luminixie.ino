@@ -40,8 +40,8 @@ const char* hostname = "luminixie";
 ESP8266WebServer webserver(WEBSERVER_PORT);
 
 // -------------- Connection / WiFi --------------
-#define CONNECTION_MODE_AP 0 
-#define CONNECTION_MODE_STA 1
+#define CONNECTION_MODE_AP   (0) 
+#define CONNECTION_MODE_STA  (1)
 boolean connectedToWifiNetwork = false;
 WiFiEventHandler connectedEventHandler, gotIpEventHandler, disconnectedEventHandler;
 
@@ -85,8 +85,8 @@ byte pinIndex[6][10] = { // Mapping table to find the HV5530 pinnumber for a dig
   { 53, 62, 61, 60, 59, 58, 57, 56, 55, 54 }
 };
 
-byte rightDotPin = 20;
-byte leftDotPin = 42;
+#define RIGHT_DOT_PIN (20)
+#define LEFT_DOT_PIN  (42)
 
 boolean turnOffTimeDots;
 unsigned long turnOffTimeDotsAt;
@@ -179,8 +179,8 @@ void setupDateTimeSync() {
 void loop() {
   if (turnOffTimeDots && millis() >= turnOffTimeDotsAt) {
     turnOffTimeDots = false;
-    bcmPins[rightDotPin].value = NIXIE_OFF;
-    bcmPins[leftDotPin].value = NIXIE_OFF;
+    bcmPins[RIGHT_DOT_PIN].value = NIXIE_OFF;
+    bcmPins[LEFT_DOT_PIN].value = NIXIE_OFF;
     writerHV5530();
   }
   
@@ -190,7 +190,7 @@ void loop() {
     printCurrentTimeAndDate();
     
     if (dateAndTime.second() == 0 && dateAndTime.minute() % 5 == 0) {
-      runAntiCathodePoisoningSequence(1);
+      runAntiCathodePoisoningSequence2(1);
     }
 
     if (config.showTemperature) {
@@ -237,41 +237,39 @@ void printCurrentTimeAndDate() {
 }
 
 // Assumes that parameter "value" is less than 100.00.
-// Temperature is shown on different tubes than Humidity to have "even" wear on the tubes
+// Temperature is shown on different tubes than Humidity to have more "even" wear on the tubes
 void setTemperatureOnTubes(float value) {
-  allTubesOff();
-
-  bcmPins[rightDotPin].value = NIXIE_ON;
-
   int integerPartOfValue = (int)(value);
-  setTube(2, extractDigit(integerPartOfValue, 1));
-  if (integerPartOfValue >= 10) {
-    setTube(3, extractDigit(integerPartOfValue, 2));  
-  }
-
-  int decimals = getDecimals(value, 1);
-  setTube(1, extractDigit(decimals, 1));
-
-  writerHV5530();
+  int decimalPartOfValue = getDecimals(value, 1);
+  
+  setTubes(
+    -1,
+    -1,
+    false,
+    integerPartOfValue >= 10 ? extractDigit(integerPartOfValue, 2) : -1,
+    extractDigit(integerPartOfValue, 1),
+    true,
+    extractDigit(decimalPartOfValue, 1),
+    -1    
+  );
 }
 
 // Assumes that parameter "value" is less than 100.00.
-// Temperature is shown on different tubes than Humidity to have "even" wear on the tubes
+// Temperature is shown on different tubes than Humidity to have more "even" wear on the tubes
 void setHumidityOnTubes(float value) {
-  allTubesOff();
-
-  bcmPins[leftDotPin].value = NIXIE_ON;
-
   int integerPartOfValue = (int)(value);
-  setTube(4, extractDigit(integerPartOfValue, 1));
-  if (integerPartOfValue >= 10) {
-    setTube(5, extractDigit(integerPartOfValue, 2));  
-  }
-
-  int decimals = getDecimals(value, 1);
-  setTube(3, extractDigit(decimals, 1));
-
-  writerHV5530();
+  int decimalPartOfValue = getDecimals(value, 1);
+  
+  setTubes(
+    integerPartOfValue >= 10 ? extractDigit(integerPartOfValue, 2) : -1,
+    extractDigit(integerPartOfValue, 1),
+    true,
+    extractDigit(decimalPartOfValue, 1),
+    -1,
+    false,
+    -1,
+    -1
+  );
 }
 
 int getDecimals(float value, int numberOfDecimals) {
@@ -283,23 +281,17 @@ int getDecimals(float value, int numberOfDecimals) {
 
 // Each "item" will be displayed with leading zero's.
 // This method assumes the given parameter values are less than 100.
-void setTimeOnTubes(byte left, byte center, byte right) {
-  allTubesOff();
-  
-  setTube(4, extractDigit(left, 1));
-  setTube(5, left < 10 ? 0 : extractDigit(left, 2));
-  
-  bcmPins[rightDotPin].value = NIXIE_ON;
-  
-  setTube(2, extractDigit(center, 1));
-  setTube(3, center < 10 ? 0 : extractDigit(center, 2));
-  
-  bcmPins[leftDotPin].value = NIXIE_ON;
-  
-  setTube(0, extractDigit(right, 1));
-  setTube(1, right < 10 ? 0 : extractDigit(right, 2));
-  
-  writerHV5530();
+void setTimeOnTubes(byte hours, byte minutes, byte seconds) {
+  setTubes(
+    hours < 10 ? 0 : extractDigit(hours, 2),
+    extractDigit(hours, 1),
+    true,
+    minutes < 10 ? 0 : extractDigit(minutes, 2),
+    extractDigit(minutes, 1),
+    true,
+    seconds < 10 ? 0 : extractDigit(seconds, 2),
+    extractDigit(seconds, 1)
+  );
 
   turnOffTimeDotsAt = millis() + 500;
   turnOffTimeDots = true;
@@ -307,19 +299,17 @@ void setTimeOnTubes(byte left, byte center, byte right) {
 
 // Each "item" will be displayed with leading zero's.
 // This method assumes the given parameter values are less than 100.
-void setDateOnTubes(byte left, byte center, byte right) {
-  allTubesOff();
-  
-  setTube(4, extractDigit(left, 1));
-  setTube(5, left < 10 ? 0 : extractDigit(left, 2));
-  
-  setTube(2, extractDigit(center, 1));
-  setTube(3, center < 10 ? 0 : extractDigit(center, 2));
-  
-  setTube(0, extractDigit(right, 1));
-  setTube(1, right < 10 ? 0 : extractDigit(right, 2));
-  
-  writerHV5530();
+void setDateOnTubes(byte day, byte month, byte year) {
+  setTubes(
+    day < 10 ? 0 : extractDigit(day, 2),
+    extractDigit(day, 1),
+    false,
+    month < 10 ? 0 : extractDigit(month, 2),
+    extractDigit(month, 1),
+    false,
+    year < 10 ? 0 : extractDigit(year, 2),
+    extractDigit(year, 1)
+  );
 }
 
 // Returns a single digit in a given number.
@@ -334,10 +324,10 @@ int extractDigit(int number, int pos) {
 
 // Set the given tube to the given digit.
 // The parameter "tube" van have the folowing values: 0, 1, 2, 3, 4, 5.
-// Where 0 is the most right tube and 5 is the most left tube (as seen from the front).
-void setTube(byte tube, byte digit) {
+// 0 is the most right tube, 5 is the most left tube (as seen from the front).
+void setTube(int tube, int digit) {
   byte pin = pinIndex[tube][digit];
-  bcmPins[pin].value = NIXIE_ON;
+  if (digit >= 0) bcmPins[pin].value = NIXIE_ON;
 }
 
 void allTubesOff() {
@@ -347,20 +337,61 @@ void allTubesOff() {
   }
 }
 
-void runAntiCathodePoisoningSequence(int numberOfRuns) {
+// 00 00 00
+// 11 11 11
+// 22 22 22
+// 33 33 33
+// etc.
+void runAntiCathodePoisoningSequence1() {
+  for (int i=0; i<=9; i++) {
+    setTubes(i, i, false, i, i, false, i, i);
+    delay(100);
+  }
+}
+
+void runAntiCathodePoisoningSequence1(int numberOfRuns) {
   for (int i=0; i<numberOfRuns; i++) {
-    for (int j=0; j<=9; j++) {
-      setAllTubes(j);
-      delay(100);
+    runAntiCathodePoisoningSequence1();
+  }
+}
+
+// 12 34 56
+// 23 45 67
+// 34 56 78
+// etc.
+void runAntiCathodePoisoningSequence2() {
+  int n[6] = {
+    1, 2, 3, 4, 5, 6
+  };
+  
+  for (int i=0; i<=9; i++) {
+    setTubes(n[0], n[1], false, n[2], n[3], false, n[4], n[5]);
+    delay(100);
+    
+    for (int j=0; j<6; j++) {
+      int next = n[j] + 1;
+      if (next >= 10) next -= 10;
+      n[j] = next;
     }
   }
 }
 
-void setAllTubes(byte digit) {
-  allTubesOff();
-  for (int i=0; i<=5; i++) {
-    setTube(i, digit);
+void runAntiCathodePoisoningSequence2(int numberOfRuns) {
+  for (int i=0; i<numberOfRuns; i++) {
+    runAntiCathodePoisoningSequence2();
   }
+}
+
+void setTubes(int n5, int n4, boolean leftDot, int n3, int n2, boolean rightDot, int n1, int n0) {
+  allTubesOff();
+  setTube(5, n5);
+  setTube(4, n4);
+  if (leftDot) bcmPins[LEFT_DOT_PIN].value = NIXIE_ON;
+  setTube(3, n3);
+  setTube(2, n2);
+  if (rightDot) bcmPins[RIGHT_DOT_PIN].value = NIXIE_ON;
+  setTube(1, n1);
+  setTube(0, n0);
   writerHV5530();
 }
 
@@ -522,8 +553,9 @@ void connectToWifi() {
   unsigned long startTime = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startTime < 15000) {
     Serial.write('.');
-    runAntiCathodePoisoningSequence(1);
+    runAntiCathodePoisoningSequence2(1);
   }
+  setTubes(-1, -1, false, -1, -1, false, -1, -1);
 }
 
 DynamicJsonDocument readConfigurationFileToJsonDocument() {
