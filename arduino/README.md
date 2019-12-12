@@ -2,10 +2,11 @@
 
 ## Uploading
 
-The software uses SPIFFS to store it's configuration,
-so make sure that it's available by setting the appropriate flash size in Arduino.
+The software uses SPIFFS, so make sure that it's available by setting the appropriate flash size in Arduino.
 You can find this setting in the Arduino menu under "Tools" -> "Flash Size".
 For example: select `4M (1M SPIFFS)`.
+
+Use https://github.com/esp8266/arduino-esp8266fs-plugin to upload the files in `/data` to the SPIFFS.
 
 ## Running
 

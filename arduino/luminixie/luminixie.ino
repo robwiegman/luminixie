@@ -1,3 +1,22 @@
+// Wemos D1 Mini pin reference
+// Pin  Function                        ESP-8266 Pin
+// TX   TXD                             TXD
+// RX   RXD                             RXD
+// A0   Analog input, max 3.3V input    A0
+// D0   IO                              GPIO16
+// D1   IO, SCL                         GPIO5
+// D2   IO, SDA                         GPIO4
+// D3   IO, 10k Pull-up                 GPIO0
+// D4   IO, 10k Pull-up, BUILTIN_LED    GPIO2
+// D5   IO, SCK                         GPIO14
+// D6   IO, MISO                        GPIO12
+// D7   IO, MOSI                        GPIO13
+// D8   IO, 10k Pull-down, SS           GPIO15
+// G    Ground                          GND
+// 5V   5V                              -
+// 3V3  3.3V                            3.3V
+// RST  Reset                           RST
+
 #include <ESP8266WiFi.h>          // See https://arduino-esp8266.readthedocs.io/en/latest/esp8266wifi/readme.html
 #include <DNSServer.h>            // Local DNS Server used for redirecting all requests to the configuration portal
 #include <ESP8266WebServer.h>     // Local WebServer used to serve the configuration portal
@@ -88,8 +107,11 @@ byte pinIndex[6][10] = { // Mapping table to find the HV5530 pinnumber for a dig
 #define RIGHT_DOT_PIN (20)
 #define LEFT_DOT_PIN  (42)
 
-boolean turnOffTimeDots;
+boolean turnOffTimeDots = false;
 unsigned long turnOffTimeDotsAt;
+
+boolean restart = false;
+unsigned long restartAt;
 
 struct bcmPin_t {
   bool value = NIXIE_OFF;
@@ -177,39 +199,37 @@ void setupDateTimeSync() {
 }
 
 void loop() {
+  if (restart && millis() >= restartAt) {
+    ESP.restart();
+  }
   if (turnOffTimeDots && millis() >= turnOffTimeDotsAt) {
     turnOffTimeDots = false;
     bcmPins[RIGHT_DOT_PIN].value = NIXIE_OFF;
     bcmPins[LEFT_DOT_PIN].value = NIXIE_OFF;
     writerHV5530();
   }
-  
+
   events(); // Process date/time events
 
   if (secondChanged()) {
     printCurrentTimeAndDate();
-    
+
     if (dateAndTime.second() == 0 && dateAndTime.minute() % 5 == 0) {
       runAntiCathodePoisoningSequence2(1);
     }
 
     if (config.showTemperature) {
       temperature = dht.readTemperature();
-      if (isnan(temperature)) {
-        Serial.println("Failed to read temperature from DHT sensor!");
-      }
+      printTemperature();
     }
     if (config.showHumidity) {
       humidity = dht.readHumidity();
-      if (isnan(humidity)) {
-        Serial.println("Failed to read humidity from DHT sensor!");
-      }
+      printHumidity();
     }
-    printDhtValues();
     
     if (config.showDate && (dateAndTime.second() == 10 || dateAndTime.second() == 11 || dateAndTime.second() == 12)) {
       setDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
-    } else if (config.showTemperature && !isnan(temperature)&& (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
+    } else if (config.showTemperature && !isnan(temperature) && (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
       setTemperatureOnTubes(temperature);
     } else if (config.showHumidity && !isnan(humidity) && (dateAndTime.second() == 50 || dateAndTime.second() == 51 || dateAndTime.second() == 52)) {
       setHumidityOnTubes(humidity);
@@ -217,19 +237,29 @@ void loop() {
       setTimeOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
     }
   }
-  
+
   dnsServer.processNextRequest();
   webserver.handleClient();
 }
 
-void printDhtValues() {
-  Serial.print("Humidity: ");
-  Serial.print(humidity);
-  Serial.print(" %");
-  Serial.print("\t");
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.println(" *C ");
+void printTemperature() {
+  if (isnan(temperature)) {
+    Serial.println("Failed to read temperature from DHT sensor!");
+  } else {
+    Serial.print("Temperature: ");
+    Serial.print(temperature);
+    Serial.println(" *C ");    
+  }
+}
+
+void printHumidity() {
+  if (isnan(humidity)) {
+    Serial.println("Failed to read humidity from DHT sensor!");
+  } else {
+    Serial.print("Humidity: ");
+    Serial.print(humidity);
+    Serial.println(" %");
+  }
 }
 
 void printCurrentTimeAndDate() {
@@ -463,6 +493,7 @@ void saveConfigurationSentToWebserver() {
   if (error) {
     Serial.print("deserializeJson() failed: ");
     Serial.println(error.c_str());
+    webserver.send(500, "application/json", "{ \"message\": \"Failed to save settings\" }");
     return;
   }
 
@@ -471,10 +502,25 @@ void saveConfigurationSentToWebserver() {
   loadConfigurationFromFile();
  
   if (previousWifiSsid != config.wifiSsid || previousWifiPwd != config.wifiPassword || previousConnectionMode != config.connectionMode) {
-    webserver.send(200, "application/json", "Restarting to apply new connection settings");
-    ESP.restart();
-  } else {
-    webserver.send(200, "application/json", "Saved successfully");
+    webserver.send(200, "application/json", "{ \"message\": \"Restarting to apply the updated connection settings\" }");
+
+    restart = true;
+    restartAt = millis() + 500;
+    return;
+  }
+  
+  sendConfigurationFromWebserver();
+
+  int yearPresent = configurationJson["year"] | -1;
+  if (config.connectionMode == CONNECTION_MODE_AP && yearPresent != -1) {
+    Serial.println("set date/time");
+    int year = configurationJson["year"];
+    int month = configurationJson["month"];
+    int day = configurationJson["day"];
+    int hour = configurationJson["hour"];
+    int minute = configurationJson["minute"];
+    int second = configurationJson["second"];
+    setTime(hour, minute, second, day, month, year);
   }
 }
 
@@ -493,10 +539,20 @@ void startWebserver() {
 
 void processRootRequest() {
   Serial.println("handleRoot");
-  redirect("/configuration");
+  redirect("/index.html");
+}
+
+void redirect(String toUrl) {
+  webserver.sendHeader("Location", toUrl, true);
+  webserver.send(302, "text/plain", "");
 }
 
 void handleNotFound() {
+  if (webserver.method() == HTTP_GET) {
+    if (handleFileRead(webserver.uri())) {
+      return;
+    }
+  }
   String message = "Not Found\n\n";
   message += "URI: ";
   message += webserver.uri();
@@ -511,9 +567,32 @@ void handleNotFound() {
   webserver.send(404, "text/plain", message);
 }
 
-void redirect(String toUrl) {
-  webserver.sendHeader("Location", toUrl, true);
-  webserver.send(302, "text/plain", "");
+bool handleFileRead(String path) {
+  Serial.println("handleFileRead: " + path);
+
+  webserver.sendHeader("Cache-Control","public, max-age=2628000");
+  
+  String contentType = getContentType(path);
+  if (SPIFFS.exists(path)) {
+    File file = SPIFFS.open(path, "r");
+    size_t sent = webserver.streamFile(file, contentType);
+    file.close();
+    return true;
+  }
+  Serial.println("File Not Found!");
+  return false;
+}
+
+String getContentType(String filename){
+  if(filename.endsWith(".htm")) return "text/html";
+  else if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".js")) return "text/javascript";
+  else if(filename.endsWith(".css")) return "text/css";
+  else if(filename.endsWith(".png")) return "image/png";
+  else if(filename.endsWith(".gif")) return "image/gif";
+  else if(filename.endsWith(".jpg")) return "image/jpeg";
+  else if(filename.endsWith(".ico")) return "image/x-icon";
+  return "text/plain";
 }
 
 void setupAccessPoint() {

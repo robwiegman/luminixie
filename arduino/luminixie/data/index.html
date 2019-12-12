@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <meta name='mobile-web-app-capable' content='yes'>
+    <title>LumiNixie</title>
+    <link rel="stylesheet" href="main.css">
+    <!-- Bootstrap 4.4.1, Jquery 3.4.1, Popper.js 1.16.0, Font Awesome 4.7.0-->
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <script src="jquery.min.js"></script>
+    <script src="popper.min.js"></script>
+    <script src="bootstrap.min.js"></script>
+    <link rel="stylesheet" href="font-awesome.min.css">
+    <script>
+        const url = "/configuration";
+
+			Date.prototype.toDateInputValue = (function() {
+			    var local = new Date(this);
+			    local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
+			    return local.toJSON().slice(0,10);
+			});
+			Date.prototype.toTimeInputValue = (function() {
+			    var local = new Date(this);
+			    local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
+			    return local.toJSON().slice(11,19);
+			});
+
+			let configuration = null;
+
+			function init() {
+				$('#ledBrightness').change( (event) => {
+					configuration.ledBrightness = +event.target.value;
+					updateUi();
+				});
+
+				$('#ledColor').change( (event) => {
+					const hexColor = event.target.value;
+					configuration.ledColorR = +("0x" + hexColor[1] + hexColor[2]);
+					configuration.ledColorG = +("0x" + hexColor[3] + hexColor[4]);
+					configuration.ledColorB = +("0x" + hexColor[5] + hexColor[6]);
+					updateUi();
+				});
+
+				$('#connectionMode').change((event) => {
+					console.log(event.target.value);
+					configuration.connectionMode = +event.target.value;
+					updateUi();
+				});
+
+				$("#toggle-wifi-password").click(function() {
+				  $('#toggle-wifi-password-icon').toggleClass("fa-eye fa-eye-slash");
+				  var input = $("#wifi-password");
+				  if (input.attr("type") == "password") {
+				    input.attr("type", "text");
+				  } else {
+				    input.attr("type", "password");
+				  }
+				});
+
+				$('#btnSave').click(function() {
+					save();
+				});
+
+				loadConfiguration();
+			}
+
+			function updateUi() {
+				$( "#ledBrightness" ).val(configuration.ledBrightness);
+
+				r = configuration.ledColorR.toString(16);
+				g = configuration.ledColorG.toString(16);
+				b = configuration.ledColorB.toString(16);
+				if (r.length === 1)
+					r = "0" + r;
+				if (g.length === 1)
+					g = "0" + g;
+				if (b.length === 1)
+					b = "0" + b;
+				$( "#ledColor" ).val("#" + r + g + b);
+
+				$('#connectionMode').val(configuration.connectionMode);
+				$('#wifiSsid').val(configuration.wifiSsid);
+				$('#wifi-password').val(configuration.wifiPassword);
+				if (configuration.connectionMode === 0) {
+					$('#_wifiSsid').hide();
+					$('#_wifiPassword').hide();
+					$('#_datetime').show();
+					$('#date').val(new Date().toDateInputValue());
+					$('#time').val(new Date().toTimeInputValue());
+				} else {
+					$('#_wifiSsid').show();
+					$('#_wifiPassword').show();
+					$('#_datetime').hide();
+				}
+			}
+
+			function loadConfiguration() {
+				var jqxhr = $.getJSON( url, {})
+					.done(function(data) {
+						configuration = data;
+						updateUi();
+					})
+					.fail(function() {
+						console.log( "error" );
+					})
+					.always(function() {
+						console.log( "complete" );
+					});
+			}
+
+			function save() {
+				if (configuration === null) {
+					return;
+				}
+
+				console.log($('#setDateTime').is(":checked"));
+				if (+($('#connectionMode').val()) === 0 && $('#setDateTime').is(":checked")) {
+					configuration.hour = +($('#time').val().slice(0,2));
+					configuration.minute = +($('#time').val().slice(3,5));
+					configuration.second = +($('#time').val().slice(6,8))
+					configuration.day = +($('#date').val().slice(8,10));
+					configuration.month = +($('#date').val().slice(5,7));
+					configuration.year = +($('#date').val().slice(0,4));
+				} else {
+					delete configuration.hour;
+					delete configuration.minute;
+					delete configuration.second;
+					delete configuration.day;
+					delete configuration.month;
+					delete configuration.year;
+				}
+				console.log(JSON.stringify(configuration));
+
+				$.ajax({
+					type: 'POST',
+					url: url,
+					data: JSON.stringify(configuration),
+					success: function(data) { console.log(data); },
+					error: function(jqXHR, textStatus, errorThrown) { alert(errorThrown); },
+					contentType: 'text/plain',
+					dataType: 'json'
+				});
+			}
+		</script>
+</head>
+
+<body>
+    <div class='row'>
+        <div class="col"></div>
+        <div class="col-sm-8 col-md-6 col-lg-4">
+            <h1>LumiNixie</h1>
+            <fieldset>
+                <legend>LED's</legend>
+                <label>Brightness (0% &harr; 100%):</label>
+                <input id='ledBrightness' class='slider' type='range' min='0' max='255'>
+                <p>Color: <input id="ledColor" class="colorpicker" type="color" value="#ff0000"></p>
+            </fieldset>
+            <fieldset>
+                <legend>Connection</legend>
+                <div class='form-group'>
+                    <label for='connectionMode'>Mode:</label>
+                    <select id='connectionMode' class="form-control">
+                        <option value='0'>Access Point (AP)</option>
+                        <option value='1'>Station (STA)</option>
+                    </select>
+                </div>
+                <div id='_wifiSsid' class='form-group'>
+                    <label for='wifiSsid'>SSID:</label>
+                    <input type='text' id='wifiSsid' size='30' maxlength='50' class="form-control">
+                </div>
+                <div id='_wifiPassword' class='form-group'>
+                    <label for='wifi-password'>Password:</label>
+                    <div class='input-group'>
+                        <input type='password' id='wifi-password' size='30' maxlength='50' class="form-control">
+                        <div class="input-group-append">
+                            <span id='toggle-wifi-password' class="input-group-text">
+                                <i id='toggle-wifi-password-icon' class="fa fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset id='_datetime'>
+                <legend>Set time / date</legend>
+                <div class="row">
+                    <div class="col-sm-1">
+                        <input type="checkbox" id="setDateTime" class="form-check">
+                    </div>
+                    <div class="col">
+                        <input type="time" id="time" step="1" class="form-control">
+                    </div>
+                    <div class="col">
+                        <input type="date" id="date" class="form-control">
+                    </div>
+                </div>
+            </fieldset>
+            <p></p>
+            <div>
+                <button id="btnSave" class="btn btn-primary btn-block">Apply and save</button>
+            </div>
+        </div>
+        <div class="col"></div>
+    </div>
+    <script>
+    $(document).ready(function() {
+        init();
+    });
+    </script>
+</body>
+
+</html>
