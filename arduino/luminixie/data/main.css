@@ -1,6 +1,0 @@
-.container {
-  position: absolute; left: 50%; transform: translateX(-50%); width: 300px;
-}
-.colorpicker, .slider {
-  width: 100%;
-}

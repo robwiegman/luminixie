@@ -1,0 +1,7 @@
+.colorpicker, .slider {
+  width: 100%;
+}
+.colorpicker {
+  border-radius: .25rem;
+  height: calc(1.5em + .75rem + 2px);
+}
