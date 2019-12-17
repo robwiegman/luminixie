@@ -82,13 +82,15 @@
 		    return local.toJSON().slice(11,19);
 		});
 
-		let configuration = {ledColorR:0, ledColorG:0, ledColorB:0 };
+		// let configuration = {showDate:true, ledColorR:0, ledColorG:0, ledColorB:0 };
+		let configuration = null;
+
 		const url = '/configuration';
 
 		function init() {
 			console.log('init()');
 
-			$('#ledBrightness').change((event) => {
+			$('#led-brightness').change((event) => {
 				configuration.ledBrightness = +event.target.value;
 			});
 
@@ -110,6 +112,16 @@
 
 			$('#wifi-password').change((event) => {
 				configuration.wifiPassword = event.target.value;
+			});
+
+			$('#show-date').change((event) => {
+				configuration.showDate = $('#show-date').is(':checked')
+			});
+			$('#show-temperature').change((event) => {
+				configuration.showTemperature = $('#show-temperature').is(':checked')
+			});
+			$('#show-humidity').change((event) => {
+				configuration.showHumidity = $('#show-humidity').is(':checked')
 			});
 
 			$('#toggle-wifi-password').click(() => {
@@ -136,7 +148,10 @@
 		function updateUi() {
 			console.log('updateUi()');
 
-			$('#ledBrightness').val(configuration.ledBrightness);
+			$('#led-brightness').val(configuration.ledBrightness);
+			$('#show-date').prop('checked', configuration.showDate);
+			$('#show-temperature').prop('checked', configuration.showTemperature);
+			$('#show-humidity').prop('checked', configuration.showHumidity);
 
 			r = configuration.ledColorR.toString(16);
 			g = configuration.ledColorG.toString(16);
@@ -247,9 +262,26 @@
 				<div id='form' class='d-none'>
 		            <fieldset>
 		                <legend>LED's</legend>
-		                <label>Brightness (0% &harr; 100%):</label>
-		                <input id='ledBrightness' class='slider' type='range' min='0' max='255'>
+		                <label for='led-brightness'>Brightness (0% &harr; 100%):</label>
+		                <input id='led-brightness' class='slider' type='range' min='0' max='255'>
 		                <p>Color: <input id='ledColor' class='colorpicker' type='color' value='#ff0000'></p>
+		            </fieldset>
+		            <fieldset>
+		                <legend>Nixie tubes</legend>
+
+						<div class="form-check">
+		                	<input id='show-date' class='form-check-input' type='checkbox'>
+		                	<label for='show-date' class="form-check-label" >Show date</label>
+						</div>
+						<div class="form-check">
+		                	<input id='show-temperature' class='form-check-input' type='checkbox'>
+		                	<label for='show-temperature' class="form-check-label" >Show temperature</label>
+						</div>
+						<div class="form-check">
+		                	<input id='show-humidity' class='form-check-input' type='checkbox'>
+		                	<label for='show-humidity' class="form-check-label" >Show humidity</label>
+						</div>
+						<p></p>
 		            </fieldset>
 		            <fieldset>
 		                <legend>Connection</legend>
