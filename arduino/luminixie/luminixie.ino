@@ -226,7 +226,7 @@ void loop() {
       humidity = dht.readHumidity();
       printHumidity();
     }
-    
+
     if (config.showDate && (dateAndTime.second() == 10 || dateAndTime.second() == 11 || dateAndTime.second() == 12)) {
       setDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
     } else if (config.showTemperature && !isnan(temperature) && (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
@@ -237,7 +237,7 @@ void loop() {
       setTimeOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
     }
   }
-
+    
   dnsServer.processNextRequest();
   webserver.handleClient();
 }
@@ -311,14 +311,14 @@ int getDecimals(float value, int numberOfDecimals) {
 
 // Each "item" will be displayed with leading zero's.
 // This method assumes the given parameter values are less than 100.
-void setTimeOnTubes(byte hours, byte minutes, byte seconds) {
+void setTimeOnTubes(int hours, int minutes, int seconds) {
   setTubes(
     hours < 10 ? 0 : extractDigit(hours, 2),
     extractDigit(hours, 1),
-    true,
+    false,
     minutes < 10 ? 0 : extractDigit(minutes, 2),
     extractDigit(minutes, 1),
-    true,
+    false,
     seconds < 10 ? 0 : extractDigit(seconds, 2),
     extractDigit(seconds, 1)
   );
@@ -329,7 +329,7 @@ void setTimeOnTubes(byte hours, byte minutes, byte seconds) {
 
 // Each "item" will be displayed with leading zero's.
 // This method assumes the given parameter values are less than 100.
-void setDateOnTubes(byte day, byte month, byte year) {
+void setDateOnTubes(int day, int month, int year) {
   setTubes(
     day < 10 ? 0 : extractDigit(day, 2),
     extractDigit(day, 1),
