@@ -114,14 +114,20 @@
 				configuration.wifiPassword = event.target.value;
 			});
 
+			$('#time-dots-mode').change((event) => {
+				configuration.timeDotsMode = +event.target.value;
+			});
+
 			$('#show-date').change((event) => {
-				configuration.showDate = $('#show-date').is(':checked')
+				configuration.showDate = $('#show-date').is(':checked');
 			});
+
 			$('#show-temperature').change((event) => {
-				configuration.showTemperature = $('#show-temperature').is(':checked')
+				configuration.showTemperature = $('#show-temperature').is(':checked');
 			});
+
 			$('#show-humidity').change((event) => {
-				configuration.showHumidity = $('#show-humidity').is(':checked')
+				configuration.showHumidity = $('#show-humidity').is(':checked');
 			});
 
 			$('#toggle-wifi-password').click(() => {
@@ -149,6 +155,7 @@
 			console.log('updateUi()');
 
 			$('#led-brightness').val(configuration.ledBrightness);
+			$('#time-dots-mode').val(configuration.timeDotsMode);
 			$('#show-date').prop('checked', configuration.showDate);
 			$('#show-temperature').prop('checked', configuration.showTemperature);
 			$('#show-humidity').prop('checked', configuration.showHumidity);
@@ -268,7 +275,14 @@
 		            </fieldset>
 		            <fieldset>
 		                <legend>Nixie tubes</legend>
-
+		                <div class='form-group'>
+		                    <label for='time-dots-mode'>Time dots mode:</label>
+		                    <select id='time-dots-mode' class='form-control'>
+		                        <option value='0'>Blink</option>
+		                        <option value='1'>On</option>
+		                        <option value='2'>Off</option>
+		                    </select>
+		                </div>
 						<div class="form-check">
 		                	<input id='show-date' class='form-check-input' type='checkbox'>
 		                	<label for='show-date' class="form-check-label" >Show date</label>

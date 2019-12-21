@@ -74,11 +74,11 @@ struct Config {
   String wifiPassword;
 
   String timezoneLocation; // See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones (TZ database name)
+  byte timeDotsMode;
   boolean showDate; // When set to true, the current date is shown every minute on the nixies on seconds 10, 11 and 12
-
   boolean showTemperature; // When set to true, the current temperature is shown every minute on the nixies on seconds 30, 31 and 32
   boolean showHumidity; // When set to true, the current humidity is shown every minute on the nixies on seconds 50, 51 and 52
-
+  
   byte ledBrightness; // Range 0-255
   byte ledColorR;
   byte ledColorG;
@@ -88,7 +88,7 @@ struct Config {
 const char* configFileFullPath = "/config.json";
 Config config; // <- global configuration values
 
-// -------------- HV5530 / Nixie tubes ---------------
+// -------------- HV5530 / IN-14 Nixie tubes ---------------
 byte pinIndex[6][10] = { // Mapping table to find the HV5530 pinnumber for a digit on a tube
   // Tube 0 (0 - 9) (most right tube)
   { 0, 9, 8, 7, 6, 5, 4, 3, 2, 1 },
@@ -104,19 +104,25 @@ byte pinIndex[6][10] = { // Mapping table to find the HV5530 pinnumber for a dig
   { 53, 62, 61, 60, 59, 58, 57, 56, 55, 54 }
 };
 
+struct bcmPin_t {
+  bool value = NIXIE_OFF;
+};
+bcmPin_t bcmPins[NR_HV5530_PINS];
+
+// -------------- HV5530 / IN-3 Nixie tubes ---------------
 #define RIGHT_DOT_PIN (20)
 #define LEFT_DOT_PIN  (42)
 
 boolean turnOffTimeDots = false;
 unsigned long turnOffTimeDotsAt;
 
+#define TIME_DOTS_MODE_BLINK (0)
+#define TIME_DOTS_MODE_ON    (1)
+#define TIME_DOTS_MODE_OFF   (2)
+
+// -------------- Restart trigger ---------------
 boolean restart = false;
 unsigned long restartAt;
-
-struct bcmPin_t {
-  bool value = NIXIE_OFF;
-};
-bcmPin_t bcmPins[NR_HV5530_PINS];
 
 void setup() {
   setupSerial();
@@ -209,7 +215,7 @@ void loop() {
     writerHV5530();
   }
 
-  events(); // Process date/time events
+  events(); // Process date/time events of the ezTime library
 
   if (secondChanged()) {
     printCurrentTimeAndDate();
@@ -315,16 +321,18 @@ void setTimeOnTubes(int hours, int minutes, int seconds) {
   setTubes(
     hours < 10 ? 0 : extractDigit(hours, 2),
     extractDigit(hours, 1),
-    false,
+    config.timeDotsMode != TIME_DOTS_MODE_OFF ? true : false,
     minutes < 10 ? 0 : extractDigit(minutes, 2),
     extractDigit(minutes, 1),
-    false,
+    config.timeDotsMode != TIME_DOTS_MODE_OFF ? true : false,
     seconds < 10 ? 0 : extractDigit(seconds, 2),
     extractDigit(seconds, 1)
   );
 
-  turnOffTimeDotsAt = millis() + 500;
-  turnOffTimeDots = true;
+  if (config.timeDotsMode == TIME_DOTS_MODE_BLINK) {
+    turnOffTimeDotsAt = millis() + 500;
+    turnOffTimeDots = true;    
+  }
 }
 
 // Each "item" will be displayed with leading zero's.
@@ -662,6 +670,7 @@ void loadConfigurationFromFile() {
   config.ledColorG = jsonDoc["ledColorG"] | 0;
   config.ledColorB = jsonDoc["ledColorB"] | 255;
   config.timezoneLocation = jsonDoc["timezoneLocation"] | "Europe/Amsterdam";
+  config.timeDotsMode = jsonDoc["timeDotsMode"] | TIME_DOTS_MODE_BLINK;
   config.showDate = jsonDoc["showDate"] | true;
   config.showTemperature = jsonDoc["showTemperature"] | true;
   config.showHumidity = jsonDoc["showHumidity"] | true;
@@ -681,6 +690,7 @@ DynamicJsonDocument getConfigObjectAsJsonDocument() {
   jsonDoc["ledColorG"] = config.ledColorG;
   jsonDoc["ledColorB"] = config.ledColorB;
   jsonDoc["timezoneLocation"] = config.timezoneLocation;
+  jsonDoc["timeDotsMode"] = config.timeDotsMode;
   jsonDoc["showDate"] = config.showDate;
   jsonDoc["showTemperature"] = config.showTemperature;
   jsonDoc["showHumidity"] = config.showHumidity;
