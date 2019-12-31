@@ -27,9 +27,10 @@
 #include "DHT.h"                  // See https://github.com/adafruit/DHT-sensor-library
 
 // -------------- LED's ---------------
-#define NR_LEDS       (6)
+#define NR_OF_LEDS    (6)
 #define PIN_LED_DATA  (12)
-CRGB leds[NR_LEDS];
+CRGB leds[NR_OF_LEDS];
+uint8_t gHue = 0; // rotating "base color" used by some of the patterns
 byte previousLedBrightness;
 
 // -------------- Thermometer / Hygrometer ---------------
@@ -80,6 +81,9 @@ struct Config {
   boolean showHumidity; // When set to true, the current humidity is shown every minute on the nixies on seconds 50, 51 and 52
   
   byte ledBrightness; // Range 0-255
+  byte ledMode;
+  int ledRainbowSpeed;
+  
   byte ledColorR;
   byte ledColorG;
   byte ledColorB;
@@ -113,7 +117,7 @@ bcmPin_t bcmPins[NR_HV5530_PINS];
 #define RIGHT_DOT_PIN (20)
 #define LEFT_DOT_PIN  (42)
 
-boolean turnOffTimeDots = false;
+boolean turnOffTimeDotsScheduled = false;
 unsigned long turnOffTimeDotsAt;
 
 #define TIME_DOTS_MODE_BLINK (0)
@@ -147,8 +151,9 @@ void setupFileSystem() {
 }
 
 void setupLeds() {
-  FastLED.addLeds<APA106, PIN_LED_DATA>(leds, NR_LEDS);
-  applyLedConfiguration();
+  FastLED.addLeds<APA106, PIN_LED_DATA>(leds, NR_OF_LEDS);
+  FastLED.setBrightness(config.ledBrightness);
+  setAllLedsToSameColor(CRGB::Black);
 }
 
 void setupNixies() {
@@ -205,14 +210,13 @@ void setupDateTimeSync() {
 }
 
 void loop() {
+  loopLeds();
+    
   if (restart && millis() >= restartAt) {
     ESP.restart();
   }
-  if (turnOffTimeDots && millis() >= turnOffTimeDotsAt) {
-    turnOffTimeDots = false;
-    bcmPins[RIGHT_DOT_PIN].value = NIXIE_OFF;
-    bcmPins[LEFT_DOT_PIN].value = NIXIE_OFF;
-    writerHV5530();
+  if (turnOffTimeDotsScheduled && millis() >= turnOffTimeDotsAt) {
+    turnOffTimeDots();
   }
 
   events(); // Process date/time events of the ezTime library
@@ -224,13 +228,15 @@ void loop() {
       runAntiCathodePoisoningSequence2(1);
     }
 
-    if (config.showTemperature) {
-      temperature = dht.readTemperature();
-      printTemperature();
-    }
-    if (config.showHumidity) {
-      humidity = dht.readHumidity();
-      printHumidity();
+    if (dateAndTime.second() % 10 == 0) { // Read temperature/humidity every 10 seconds
+      if (config.showTemperature) {
+        temperature = dht.readTemperature();
+        printTemperature();
+      }
+      if (config.showHumidity) {
+        humidity = dht.readHumidity();
+        printHumidity();
+      }      
     }
 
     if (config.showDate && (dateAndTime.second() == 10 || dateAndTime.second() == 11 || dateAndTime.second() == 12)) {
@@ -246,6 +252,30 @@ void loop() {
     
   dnsServer.processNextRequest();
   webserver.handleClient();
+}
+
+void loopLeds() {
+  FastLED.setBrightness(config.ledBrightness);
+
+  if (config.ledMode == 0) {
+    setAllLedsToSameColor(CRGB(config.ledColorR, config.ledColorG, config.ledColorB));
+  } else if (config.ledMode == 1) {
+    loopLedsRainbow();
+  } else {
+    loopLedsOff();
+  }
+}
+
+void loopLedsOff() {
+  setAllLedsToSameColor(CRGB::Black);
+  FastLED.show();
+}
+
+void turnOffTimeDots() {
+  turnOffTimeDotsScheduled = false;
+  bcmPins[RIGHT_DOT_PIN].value = NIXIE_OFF;
+  bcmPins[LEFT_DOT_PIN].value = NIXIE_OFF;
+  writerHV5530();
 }
 
 void printTemperature() {
@@ -331,7 +361,7 @@ void setTimeOnTubes(int hours, int minutes, int seconds) {
 
   if (config.timeDotsMode == TIME_DOTS_MODE_BLINK) {
     turnOffTimeDotsAt = millis() + 500;
-    turnOffTimeDots = true;    
+    turnOffTimeDotsScheduled = true;    
   }
 }
 
@@ -449,8 +479,21 @@ void writerHV5530(void) {
   digitalWrite(PIN_HV5530_LATCH, HIGH);  // store data     
 }
 
+void loopLedsRainbow() {
+  CRGB color[1];
+  int deltaHue = 1;
+  fill_rainbow(color, NR_OF_LEDS, gHue, deltaHue);
+  setAllLedsToSameColor(color[0]);
+  FastLED.show();
+  
+  EVERY_N_MILLIS_I(thistimer, config.ledRainbowSpeed) { // Sets initial timing only. Changes here don't do anything
+    gHue++;
+  }
+  thistimer.setPeriod(config.ledRainbowSpeed);    
+}
+
 void setAllLedsToSameColor(CRGB color) {
-  fill_solid(leds, NR_LEDS, color);
+  fill_solid(leds, NR_OF_LEDS, color);
   FastLED.show();
 }
 
@@ -479,7 +522,6 @@ void processConfigurationRequest() {
     sendConfigurationFromWebserver();
   } else if (webserver.method() == HTTP_POST) {
     saveConfigurationSentToWebserver();
-    applyLedConfiguration();
   }
 }
 
@@ -530,11 +572,6 @@ void saveConfigurationSentToWebserver() {
     int second = configurationJson["second"];
     setTime(hour, minute, second, day, month, year);
   }
-}
-
-void applyLedConfiguration() {
-  FastLED.setBrightness(config.ledBrightness);
-  setAllLedsToSameColor(CRGB(config.ledColorR, config.ledColorG, config.ledColorB));  
 }
 
 void startWebserver() {
@@ -666,6 +703,8 @@ void loadConfigurationFromFile() {
   config.wifiSsid = jsonDoc["wifiSsid"] | "default";
   config.wifiPassword = jsonDoc["wifiPassword"] | "default";
   config.ledBrightness = jsonDoc["ledBrightness"] | 25;
+  config.ledMode = jsonDoc["ledMode"] | 0;
+  config.ledRainbowSpeed = jsonDoc["ledRainbowSpeed"] | 80;
   config.ledColorR = jsonDoc["ledColorR"] | 0;
   config.ledColorG = jsonDoc["ledColorG"] | 0;
   config.ledColorB = jsonDoc["ledColorB"] | 255;
@@ -686,6 +725,8 @@ DynamicJsonDocument getConfigObjectAsJsonDocument() {
   jsonDoc["wifiSsid"] = config.wifiSsid;
   jsonDoc["wifiPassword"] = config.wifiPassword;
   jsonDoc["ledBrightness"] = config.ledBrightness;
+  jsonDoc["ledMode"] = config.ledMode;
+  jsonDoc["ledRainbowSpeed"] = config.ledRainbowSpeed;
   jsonDoc["ledColorR"] = config.ledColorR;
   jsonDoc["ledColorG"] = config.ledColorG;
   jsonDoc["ledColorB"] = config.ledColorB;

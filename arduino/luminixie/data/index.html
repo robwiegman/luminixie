@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 
 <head>
-    <meta charset="utf-8">
+    <meta charset='utf-8'>
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <meta name='mobile-web-app-capable' content='yes'>
     <title>LumiNixie</title>
 
-    <link rel="stylesheet" href="index.css">
-	<script src="fallback.min.js"></script>
+    <link rel='stylesheet' href='index.css'>
+	<script src='fallback.min.js'></script>
     
     <script>
     	// Use the fallback library to load libraries, prefer CDN hosted, fallback to local.
@@ -82,9 +82,10 @@
 		    return local.toJSON().slice(11,19);
 		});
 
-		// let configuration = {showDate:true, ledColorR:0, ledColorG:0, ledColorB:0 };
+		
 		let configuration = null;
-
+		// configuration = {showDate:true, ledColorR:0, ledColorG:0, ledColorB:0, ledMode:1, ledRainbowSpeed:100 };
+		
 		const url = '/configuration';
 
 		function init() {
@@ -93,39 +94,38 @@
 			$('#led-brightness').change((event) => {
 				configuration.ledBrightness = +event.target.value;
 			});
-
-			$('#ledColor').change((event) => {
+			$('#_led-mode').change((event) => {
+				configuration.ledMode = +event.target.value;
+				updateUi();
+			});
+			$('#led-color').change((event) => {
 				const hexColor = event.target.value;
 				configuration.ledColorR = +('0x' + hexColor[1] + hexColor[2]);
 				configuration.ledColorG = +('0x' + hexColor[3] + hexColor[4]);
 				configuration.ledColorB = +('0x' + hexColor[5] + hexColor[6]);
 			});
-
+			$('#led-rainbow-speed').change((event) => {
+				configuration.ledRainbowSpeed = +event.target.value;
+			});
 			$('#connection-mode').change((event) => {
 				configuration.connectionMode = +event.target.value;
 				updateUi();
 			});
-
 			$('#wifi-ssid').change((event) => {
 				configuration.wifiSsid = event.target.value;
 			});
-
 			$('#wifi-password').change((event) => {
 				configuration.wifiPassword = event.target.value;
 			});
-
 			$('#time-dots-mode').change((event) => {
 				configuration.timeDotsMode = +event.target.value;
 			});
-
 			$('#show-date').change((event) => {
 				configuration.showDate = $('#show-date').is(':checked');
 			});
-
 			$('#show-temperature').change((event) => {
 				configuration.showTemperature = $('#show-temperature').is(':checked');
 			});
-
 			$('#show-humidity').change((event) => {
 				configuration.showHumidity = $('#show-humidity').is(':checked');
 			});
@@ -169,34 +169,31 @@
 				g = '0' + g;
 			if (b.length === 1)
 				b = '0' + b;
-			$('#ledColor').val('#' + r + g + b);
-
+			$('#led-color').val('#' + r + g + b);
+			$('#led-mode').val(configuration.ledMode);
+			$('#led-rainbow-speed').val(configuration.ledRainbowSpeed);
+			$('#_led-rainbow-speed').toggle(configuration.ledMode === 1);
+			$('#_led-color').toggle(configuration.ledMode === 0);
 			$('#connection-mode').val(configuration.connectionMode);
 			$('#wifi-ssid').val(configuration.wifiSsid);
 			$('#wifi-password').val(configuration.wifiPassword);
-			if (configuration.connectionMode === 0) {
-				$('#_wifi-ssid').hide();
-				$('#_wifi-password').hide();
-				$('#_datetime').show();
-				$('#date').val(new Date().toDateInputValue());
-				$('#time').val(new Date().toTimeInputValue());
-			} else {
-				$('#_wifi-ssid').show();
-				$('#_wifi-password').show();
-				$('#_datetime').hide();
-			}
+			$('#_wifi-ssid').toggle(configuration.connectionMode === 1);
+			$('#_wifi-password').toggle(configuration.connectionMode === 1);
+			$('#_datetime').toggle(configuration.connectionMode === 0);
+			$('#date').val(new Date().toDateInputValue());
+			$('#time').val(new Date().toTimeInputValue());
 			$('#form').removeClass('d-none');
 		}
 
 		function loadConfiguration() {
 			var jqxhr = $.getJSON( url, {})
-				.done(function(data) {
-					configuration = data;
+				 .done(function(data) {
+				 	configuration = data;
 					updateUi();
-				})
-				.fail(function() {
-					showErrorAlert('Failed to load configuration :-(');
-				});
+				 })
+				 .fail(function() {
+				 	showErrorAlert('Failed to load configuration :-(');
+				 });
 		}
 
 		function showErrorAlert(message) {
@@ -271,7 +268,24 @@
 		                <legend>LED's</legend>
 		                <label for='led-brightness'>Brightness (0% &harr; 100%):</label>
 		                <input id='led-brightness' class='slider' type='range' min='0' max='255'>
-		                <p>Color: <input id='ledColor' class='colorpicker' type='color' value='#ff0000'></p>
+
+		                <div id='_led-mode' class='form-group'>
+	                        <label>Mode:</label>
+	                        <select id='led-mode' class='form-control'>
+	                          <option value='0'>Fixed color</option>
+	                          <option value='1'>Rainbow</option>
+							</select>		                	
+		                </div>
+
+						<div id='_led-color' class='form-group'>
+							<label for='led-color'>Fixed color:</label>
+		                	<input id='led-color' class='colorpicker' type='color'></p>
+		                </div>
+						<div id='_led-rainbow-speed' class='form-group'>
+							<label for='led-rainbow-speed'>Speed of color changes (fast &harr; slow):</label>
+		                	<input id='led-rainbow-speed' class='slider' type='range' min='1' max='5000'></p>
+		                </div>
+
 		            </fieldset>
 		            <fieldset>
 		                <legend>Nixie tubes</legend>
@@ -283,17 +297,17 @@
 		                        <option value='2'>Off</option>
 		                    </select>
 		                </div>
-						<div class="form-check">
+						<div class='form-check'>
 		                	<input id='show-date' class='form-check-input' type='checkbox'>
-		                	<label for='show-date' class="form-check-label" >Show date</label>
+		                	<label for='show-date' class='form-check-label'>Show date</label>
 						</div>
-						<div class="form-check">
+						<div class='form-check'>
 		                	<input id='show-temperature' class='form-check-input' type='checkbox'>
-		                	<label for='show-temperature' class="form-check-label" >Show temperature</label>
+		                	<label for='show-temperature' class='form-check-label'>Show temperature</label>
 						</div>
-						<div class="form-check">
+						<div class='form-check'>
 		                	<input id='show-humidity' class='form-check-input' type='checkbox'>
-		                	<label for='show-humidity' class="form-check-label" >Show humidity</label>
+		                	<label for='show-humidity' class='form-check-label'>Show humidity</label>
 						</div>
 						<p></p>
 		            </fieldset>
@@ -339,7 +353,7 @@
 		            <p></p>
 		            <fieldset id='_save'>
 			            <div>
-			                <button id='btn-save' class='btn btn-primary btn-block'>Apply and save <i id='save-spinner' class="fa fa-refresh fa-spin invisible"></i></button>
+			                <button id='btn-save' class='btn btn-primary btn-block'>Apply and save <i id='save-spinner' class='fa fa-refresh fa-spin invisible'></i></button>
 			            </div>
 			        </fieldset>
 				</div>
