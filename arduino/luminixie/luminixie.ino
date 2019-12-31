@@ -87,6 +87,10 @@ struct Config {
   byte ledColorR;
   byte ledColorG;
   byte ledColorB;
+
+  byte knightRiderLedColorR;
+  byte knightRiderLedColorG;
+  byte knightRiderLedColorB;
 };
 
 const char* configFileFullPath = "/config.json";
@@ -225,7 +229,10 @@ void loop() {
     printCurrentTimeAndDate();
 
     if (dateAndTime.second() == 0 && dateAndTime.minute() % 5 == 0) {
-      runAntiCathodePoisoningSequence2(1);
+      if (config.ledMode == 2) { // KnightRider, turn off all leds during sequence
+        loopLedsOff();
+      }
+      runAntiCathodePoisoningSequence2(3);
     }
 
     if (dateAndTime.second() % 10 == 0) { // Read temperature/humidity every 10 seconds
@@ -261,13 +268,59 @@ void loopLeds() {
     setAllLedsToSameColor(CRGB(config.ledColorR, config.ledColorG, config.ledColorB));
   } else if (config.ledMode == 1) {
     loopLedsRainbow();
+  } else if (config.ledMode == 2) {
+    loopKnightRider();
   } else {
     loopLedsOff();
   }
 }
 
+void loopKnightRider() {
+  fill_solid(leds, NR_OF_LEDS, CRGB::Black);
+  
+  int numberOfMillisInOneSecond = 1000;
+  unsigned long y = ms() % numberOfMillisInOneSecond;
+  CRGB color = CRGB(config.knightRiderLedColorR, config.knightRiderLedColorG, config.knightRiderLedColorB);
+
+  int indexOfLedToLight = 0;
+  if (y < 500) { // Move from right to left
+    indexOfLedToLight = map(y, 0, 500, 0, 5);
+    leds[indexOfLedToLight] = color;
+    if (indexOfLedToLight >= 0) {
+      leds[indexOfLedToLight - 1] =  color;
+      leds[indexOfLedToLight - 1].fadeLightBy(200);
+    }
+  } else {  // Move from left to right
+    indexOfLedToLight = map(y, 500, 1000, 5, 0);
+    leds[indexOfLedToLight] = color;
+    if (indexOfLedToLight <= 5) {
+      leds[indexOfLedToLight + 1] = color;
+      leds[indexOfLedToLight + 1].fadeLightBy(200);
+    }
+  }
+  FastLED.show();
+}
+
 void loopLedsOff() {
   setAllLedsToSameColor(CRGB::Black);
+  FastLED.show();
+}
+
+void loopLedsRainbow() {
+  CRGB color[1];
+  int deltaHue = 1;
+  fill_rainbow(color, NR_OF_LEDS, gHue, deltaHue);
+  setAllLedsToSameColor(color[0]);
+  FastLED.show();
+  
+  EVERY_N_MILLIS_I(thistimer, config.ledRainbowSpeed) { // Sets initial timing only. Changes here don't do anything
+    gHue++;
+  }
+  thistimer.setPeriod(config.ledRainbowSpeed);    
+}
+
+void setAllLedsToSameColor(CRGB color) {
+  fill_solid(leds, NR_OF_LEDS, color);
   FastLED.show();
 }
 
@@ -413,7 +466,7 @@ void allTubesOff() {
 void runAntiCathodePoisoningSequence1() {
   for (int i=0; i<=9; i++) {
     setTubes(i, i, false, i, i, false, i, i);
-    delay(100);
+    delay(50);
   }
 }
 
@@ -434,7 +487,7 @@ void runAntiCathodePoisoningSequence2() {
   
   for (int i=0; i<=9; i++) {
     setTubes(n[0], n[1], false, n[2], n[3], false, n[4], n[5]);
-    delay(100);
+    delay(50);
     
     for (int j=0; j<6; j++) {
       int next = n[j] + 1;
@@ -477,24 +530,6 @@ void writerHV5530(void) {
     p--;
   }
   digitalWrite(PIN_HV5530_LATCH, HIGH);  // store data     
-}
-
-void loopLedsRainbow() {
-  CRGB color[1];
-  int deltaHue = 1;
-  fill_rainbow(color, NR_OF_LEDS, gHue, deltaHue);
-  setAllLedsToSameColor(color[0]);
-  FastLED.show();
-  
-  EVERY_N_MILLIS_I(thistimer, config.ledRainbowSpeed) { // Sets initial timing only. Changes here don't do anything
-    gHue++;
-  }
-  thistimer.setPeriod(config.ledRainbowSpeed);    
-}
-
-void setAllLedsToSameColor(CRGB color) {
-  fill_solid(leds, NR_OF_LEDS, color);
-  FastLED.show();
 }
 
 void onStationModeConnected(const WiFiEventStationModeConnected& event) {
@@ -708,6 +743,10 @@ void loadConfigurationFromFile() {
   config.ledColorR = jsonDoc["ledColorR"] | 0;
   config.ledColorG = jsonDoc["ledColorG"] | 0;
   config.ledColorB = jsonDoc["ledColorB"] | 255;
+  config.knightRiderLedColorR = jsonDoc["knightRiderLedColorR"] | 255;
+  config.knightRiderLedColorG = jsonDoc["knightRiderLedColorG"] | 0;
+  config.knightRiderLedColorB = jsonDoc["knightRiderLedColorB"] | 0;
+ 
   config.timezoneLocation = jsonDoc["timezoneLocation"] | "Europe/Amsterdam";
   config.timeDotsMode = jsonDoc["timeDotsMode"] | TIME_DOTS_MODE_BLINK;
   config.showDate = jsonDoc["showDate"] | true;
@@ -730,6 +769,9 @@ DynamicJsonDocument getConfigObjectAsJsonDocument() {
   jsonDoc["ledColorR"] = config.ledColorR;
   jsonDoc["ledColorG"] = config.ledColorG;
   jsonDoc["ledColorB"] = config.ledColorB;
+  jsonDoc["knightRiderLedColorR"] = config.knightRiderLedColorR;
+  jsonDoc["knightRiderLedColorG"] = config.knightRiderLedColorG;
+  jsonDoc["knightRiderLedColorB"] = config.knightRiderLedColorB;
   jsonDoc["timezoneLocation"] = config.timezoneLocation;
   jsonDoc["timeDotsMode"] = config.timeDotsMode;
   jsonDoc["showDate"] = config.showDate;
