@@ -27,11 +27,13 @@
 #include "DHT.h"                  // See https://github.com/adafruit/DHT-sensor-library
 
 // -------------- LED's ---------------
-#define NR_OF_LEDS    (6)
-#define PIN_LED_DATA  (12)
+#define NR_OF_LEDS        (6)
+#define PIN_LED_DATA      (12)
+#define FRAMES_PER_SECOND (120)
 CRGB leds[NR_OF_LEDS];
 uint8_t gHue = 0; // rotating "base color" used by some of the patterns
-byte previousLedBrightness;
+byte previousLedBrightness = 0;
+
 
 // -------------- Thermometer / Hygrometer ---------------
 #define DHTTYPE DHT22
@@ -78,7 +80,7 @@ struct Config {
   byte timeDotsMode;
   boolean showDate; // When set to true, the current date is shown every minute on the nixies on seconds 10, 11 and 12
   boolean showTemperature; // When set to true, the current temperature is shown every minute on the nixies on seconds 30, 31 and 32
-  boolean showHumidity; // When set to true, the current humidity is shown every minute on the nixies on seconds 50, 51 and 52
+  boolean showHumidity; // When set to true, the current humidity is shown every minute on the nixies on seconds 40, 41 and 42
   
   byte ledBrightness; // Range 0-255
   byte ledMode;
@@ -215,7 +217,7 @@ void setupDateTimeSync() {
 
 void loop() {
   loopLeds();
-    
+
   if (restart && millis() >= restartAt) {
     ESP.restart();
   }
@@ -227,15 +229,10 @@ void loop() {
 
   if (secondChanged()) {
     printCurrentTimeAndDate();
-
-    if (dateAndTime.second() == 0 && dateAndTime.minute() % 5 == 0) {
-      if (config.ledMode == 2) { // KnightRider, turn off all leds during sequence
-        loopLedsOff();
-      }
-      runAntiCathodePoisoningSequence2(3);
-    }
-
-    if (dateAndTime.second() % 10 == 0) { // Read temperature/humidity every 10 seconds
+    
+    int sec = dateAndTime.second();
+    
+    if (sec % 10 == 0) { // Read temperature/humidity every 10 seconds
       if (config.showTemperature) {
         temperature = dht.readTemperature();
         printTemperature();
@@ -246,24 +243,52 @@ void loop() {
       }      
     }
 
-    if (config.showDate && (dateAndTime.second() == 10 || dateAndTime.second() == 11 || dateAndTime.second() == 12)) {
-      setDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
-    } else if (config.showTemperature && !isnan(temperature) && (dateAndTime.second() == 30 || dateAndTime.second() == 31 || dateAndTime.second() == 32)) {
-      setTemperatureOnTubes(temperature);
-    } else if (config.showHumidity && !isnan(humidity) && (dateAndTime.second() == 50 || dateAndTime.second() == 51 || dateAndTime.second() == 52)) {
-      setHumidityOnTubes(humidity);
+    if (sec > 50 && sec <= 59 && inLastMinuteOfYear()) {
+        int countdown = map(sec, 51, 59, 9, 1);
+        setTubes(countdown, countdown, false, countdown, countdown, false, countdown, countdown);
+        
+    } else if (sec < 10 && inFirstMinuteOfYear()) {
+      newYearsFlash();
+      
     } else {
-      setTimeOnTubes(dateAndTime.hour(), dateAndTime.minute(), dateAndTime.second());
+
+      if (sec == 0 && dateAndTime.minute() % 5 == 0) {
+        if (config.ledMode == 2) { // KnightRider, turn on all leds during sequence
+          setAllLedsToSameColor(CRGB(config.knightRiderLedColorR, config.knightRiderLedColorG, config.knightRiderLedColorB));
+        }
+        runAntiCathodePoisoningSequence2(3);
+      }
+      
+      if (config.showDate && (sec == 10 || sec == 11 || sec == 12)) {
+        setDateOnTubes(dateAndTime.day(), dateAndTime.month(), dateAndTime.year() % 1000);
+      } else if (config.showTemperature && !isnan(temperature) && (sec == 30 || sec == 31 || sec == 32)) {
+        setTemperatureOnTubes(temperature);
+      } else if (config.showHumidity && !isnan(humidity) && (sec == 40 || sec == 41 || sec == 42)) {
+        setHumidityOnTubes(humidity);
+      } else {
+        setTimeOnTubes(dateAndTime.hour(), dateAndTime.minute(), sec);
+      }
     }
   }
-    
+
   dnsServer.processNextRequest();
   webserver.handleClient();
 }
 
-void loopLeds() {
-  FastLED.setBrightness(config.ledBrightness);
+boolean inFirstMinuteOfYear() {
+  return dateAndTime.day() == 1 && dateAndTime.month() == 1 && dateAndTime.hour() == 0 && dateAndTime.minute() == 0;
+}
 
+boolean inLastMinuteOfYear() {
+  return dateAndTime.day() == 31 && dateAndTime.month() == 12 && dateAndTime.hour() == 23;
+}
+
+void loopLeds() {
+  if (previousLedBrightness != config.ledBrightness) {
+    previousLedBrightness = config.ledBrightness;
+    FastLED.setBrightness(config.ledBrightness);
+  }
+  
   if (config.ledMode == 0) {
     setAllLedsToSameColor(CRGB(config.ledColorR, config.ledColorG, config.ledColorB));
   } else if (config.ledMode == 1) {
@@ -273,6 +298,8 @@ void loopLeds() {
   } else {
     loopLedsOff();
   }
+  // insert a delay to keep the framerate modest
+  FastLED.delay(1000/FRAMES_PER_SECOND);
 }
 
 void loopKnightRider() {
@@ -287,7 +314,7 @@ void loopKnightRider() {
     indexOfLedToLight = map(y, 0, 500, 0, 5);
     leds[indexOfLedToLight] = color;
     if (indexOfLedToLight >= 0) {
-      leds[indexOfLedToLight - 1] =  color;
+      leds[indexOfLedToLight - 1] = color;
       leds[indexOfLedToLight - 1].fadeLightBy(200);
     }
   } else {  // Move from left to right
@@ -299,6 +326,8 @@ void loopKnightRider() {
     }
   }
   FastLED.show();
+  // insert a delay to keep the framerate modest
+  FastLED.delay(1000/FRAMES_PER_SECOND);
 }
 
 void loopLedsOff() {
@@ -353,6 +382,20 @@ void printHumidity() {
 
 void printCurrentTimeAndDate() {
   Serial.println(dateAndTime.dateTime("d-m-y H:i:s.v T (e)"));  
+}
+
+void newYearsFlash() {
+  int ones = dateAndTime.year() % 10;
+  int tens = (dateAndTime.year() / 10) % 10;
+  int hund = (dateAndTime.year() / 100) % 10;
+  int thou = (dateAndTime.year() / 1000) % 10;
+
+  for (int i=0; i<10; i++) {
+    setTubes(-1, -1, false, thou, hund, false, tens, ones);
+    delay(200);
+    setTubes(-1, -1, false, -1, -1, false, -1, -1);
+    delay(150);
+  }
 }
 
 // Assumes that parameter "value" is less than 100.00.
@@ -466,7 +509,7 @@ void allTubesOff() {
 void runAntiCathodePoisoningSequence1() {
   for (int i=0; i<=9; i++) {
     setTubes(i, i, false, i, i, false, i, i);
-    delay(50);
+    delay(60);
   }
 }
 
@@ -487,7 +530,7 @@ void runAntiCathodePoisoningSequence2() {
   
   for (int i=0; i<=9; i++) {
     setTubes(n[0], n[1], false, n[2], n[3], false, n[4], n[5]);
-    delay(50);
+    delay(60);
     
     for (int j=0; j<6; j++) {
       int next = n[j] + 1;
@@ -708,9 +751,9 @@ void connectToWifi() {
   WiFi.hostname(hostname);
   WiFi.begin(config.wifiSsid, config.wifiPassword);
 
-  // Wait at most 15 seconds to connect
+  // Wait at most 20 seconds to connect
   unsigned long startTime = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 15000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - startTime < 20000) {
     Serial.write('.');
     runAntiCathodePoisoningSequence2(1);
   }
